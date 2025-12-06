@@ -66,14 +66,17 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     if (scenesData) {
       console.log("Scenes loaded:", scenesData.length);
       setScenes(scenesData);
-      
+
       // Load audio tracks for scenes
       const { data: audioTracks } = await supabase
         .from("audio_tracks")
         .select("scene_id, audio_url, duration")
         .eq("type", "narration")
-        .in("scene_id", scenesData.map(s => s.id));
-      
+        .in(
+          "scene_id",
+          scenesData.map((s) => s.id)
+        );
+
       convertToAnimationScenes(scenesData, charactersData || [], audioTracks || []);
     }
 
@@ -81,12 +84,12 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
   };
 
   const convertToAnimationScenes = (
-    sceneList: Scene[], 
-    characterList: Character[], 
+    sceneList: Scene[],
+    characterList: Character[],
     audioTracks: Array<{ scene_id: string; audio_url: string; duration: number }> = []
   ) => {
     const converted: AnimationScene[] = sceneList.map((scene) => {
-      const audio = audioTracks.find(a => a.scene_id === scene.id);
+      const audio = audioTracks.find((a) => a.scene_id === scene.id);
       return {
         title: scene.title || `Scene ${scene.scene_number}`,
         backgroundUrl: scene.background_url || "",
@@ -97,15 +100,18 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
     setAnimationScenes(converted);
     console.log("Animation scenes prepared:", converted.length, "scenes,", audioTracks.length, "with audio");
-    console.log("Scene details:", converted.map(s => ({ 
-      title: s.title, 
-      duration: s.duration, 
-      hasAudio: !!s.audioUrl 
-    })));
+    console.log(
+      "Scene details:",
+      converted.map((s) => ({
+        title: s.title,
+        duration: s.duration,
+        hasAudio: !!s.audioUrl,
+      }))
+    );
   };
 
   const handlePlayPause = () => {
-    console.log('Play/Pause clicked, current state:', isPlaying, '-> new state:', !isPlaying);
+    console.log("Play/Pause clicked, current state:", isPlaying, "-> new state:", !isPlaying);
     setIsPlaying(!isPlaying);
   };
 
@@ -146,6 +152,15 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
       console.log("Video generated:", videoBlob.size, "bytes");
 
+      // Get current user for file path
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       // Upload to Supabase Storage
       setExportProgress({
         stage: "finalizing",
@@ -153,7 +168,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         message: "Uploading video...",
       });
 
-      const fileName = `${story.id}_${Date.now()}.mp4`;
+      const fileName = `${user.id}/${story.id}_${Date.now()}.mp4`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("video-exports")
         .upload(fileName, videoBlob, {

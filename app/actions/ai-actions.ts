@@ -303,10 +303,7 @@ export async function createScenesFromStoryAction(storyId: string, storyData: an
     }
 
     // Get all characters for this story
-    const { data: characters } = await supabase
-      .from("characters")
-      .select("id")
-      .eq("story_id", storyId);
+    const { data: characters } = await supabase.from("characters").select("id").eq("story_id", storyId);
 
     // Automatically add all characters to all scenes with default positioning
     if (scenes && characters && characters.length > 0) {
@@ -315,7 +312,7 @@ export async function createScenesFromStoryAction(storyId: string, storyData: an
           // Distribute characters across the scene (left, center, right)
           const totalChars = characters.length;
           const position = charIndex / Math.max(1, totalChars - 1); // 0 to 1
-          
+
           return {
             scene_id: scene.id,
             character_id: char.id,
@@ -361,7 +358,7 @@ export async function generateSceneAudioAction(sceneId: string) {
     }
 
     const text = scene.script_text || `Scene ${scene.scene_number}`;
-    
+
     if (!text.trim()) {
       return { success: false, error: "No text to narrate" };
     }
@@ -375,7 +372,7 @@ export async function generateSceneAudioAction(sceneId: string) {
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("audio-tracks")
       .upload(fileName, result.audioBlob, {
-        contentType: 'audio/mpeg',
+        contentType: "audio/mpeg",
         upsert: false,
       });
 
@@ -384,9 +381,9 @@ export async function generateSceneAudioAction(sceneId: string) {
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from("audio-tracks")
-      .getPublicUrl(fileName);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("audio-tracks").getPublicUrl(fileName);
 
     // Save audio track record
     const { error: audioError } = await supabase.from("audio_tracks").insert({
@@ -404,10 +401,7 @@ export async function generateSceneAudioAction(sceneId: string) {
 
     // Update scene duration if audio is longer
     if (result.duration > scene.duration) {
-      await supabase
-        .from("scenes")
-        .update({ duration: result.duration })
-        .eq("id", sceneId);
+      await supabase.from("scenes").update({ duration: result.duration }).eq("id", sceneId);
     }
 
     return {
@@ -417,9 +411,9 @@ export async function generateSceneAudioAction(sceneId: string) {
     };
   } catch (error) {
     console.error("Error generating scene audio:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to generate scene audio" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate scene audio",
     };
   }
 }

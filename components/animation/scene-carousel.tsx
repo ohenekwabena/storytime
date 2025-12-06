@@ -35,7 +35,7 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
       audioRef.current = audio;
 
       audio.play().catch((error) => {
-        console.warn('Audio playback failed:', error);
+        console.warn("Audio playback failed:", error);
       });
 
       audio.onloadedmetadata = () => {
@@ -43,12 +43,12 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
       };
 
       audio.onended = () => {
-        console.log('Audio playback ended');
+        console.log("Audio playback ended");
       };
 
       return () => {
         audio.pause();
-        audio.src = '';
+        audio.src = "";
       };
     } else if (isPlaying && !currentScene?.audioUrl) {
       console.log(`Scene ${currentSceneIndex + 1} has no audio`);
@@ -85,7 +85,7 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
           setCurrentSceneIndex((prev) => prev + 1);
         } else {
           // Reached the end - stop playing
-          console.log('All scenes complete, stopping playback');
+          console.log("All scenes complete, stopping playback");
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;

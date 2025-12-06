@@ -120,27 +120,36 @@ export class FFmpegVideoGenerator {
       for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
         const outputName = `segment_${i}.mp4`;
-        
+
         console.log(`Creating segment ${i}: ${scene.duration}s`);
 
         try {
           // Create video segment from single image
           await this.ffmpeg.exec([
-            "-loop", "1",
-            "-i", `scene_${i}.png`,
-            "-t", String(scene.duration),
-            "-vf", `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:${backgroundColor}`,
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-r", String(fps),
-            "-preset", "ultrafast",
-            "-crf", "23",
-            outputName
+            "-loop",
+            "1",
+            "-i",
+            `scene_${i}.png`,
+            "-t",
+            String(scene.duration),
+            "-vf",
+            `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:${backgroundColor}`,
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-r",
+            String(fps),
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            outputName,
           ]);
 
           // Verify the segment was created
-          const files = await this.ffmpeg.listDir('/');
-          console.log('Files after segment creation:', files);
+          const files = await this.ffmpeg.listDir("/");
+          console.log("Files after segment creation:", files);
 
           videoSegments.push(outputName);
         } catch (segmentError) {
@@ -172,13 +181,7 @@ export class FFmpegVideoGenerator {
       });
 
       try {
-        await this.ffmpeg.exec([
-          "-f", "concat",
-          "-safe", "0",
-          "-i", "concat.txt",
-          "-c", "copy",
-          "output_video.mp4"
-        ]);
+        await this.ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "output_video.mp4"]);
 
         console.log("Video concatenation complete");
       } catch (concatError) {
@@ -192,65 +195,82 @@ export class FFmpegVideoGenerator {
       if (audioScenes.length > 0) {
         onProgress?.({
           stage: "encoding",
-          progress: 70,
+          progress: 75,
           message: "Adding audio tracks...",
         });
 
-        // Download audio files
-        for (let i = 0; i < audioScenes.length; i++) {
-          const audioData = await fetchFile(audioScenes[i].audioUrl!);
-          await this.ffmpeg.writeFile(`audio_${i}.mp3`, audioData);
-        }
-
-        // Combine audio files if multiple
-        if (audioScenes.length === 1) {
-          // Single audio track
-          await this.ffmpeg.exec([
-            "-i",
-            "output_video.mp4",
-            "-i",
-            "audio_0.mp3",
-            "-c:v",
-            "copy",
-            "-c:a",
-            "aac",
-            "-shortest",
-            "final_output.mp4",
-          ]);
-        } else {
-          // Multiple audio tracks - concat them first
-          let audioConcat = "";
+        try {
+          // Download audio files
           for (let i = 0; i < audioScenes.length; i++) {
-            audioConcat += `file 'audio_${i}.mp3'\n`;
+            const audioData = await fetchFile(audioScenes[i].audioUrl!);
+            await this.ffmpeg.writeFile(`audio_${i}.mp3`, audioData);
+            console.log(`Downloaded audio ${i}: ${audioData.byteLength} bytes`);
           }
 
-          await this.ffmpeg.writeFile("audio_concat.txt", new TextEncoder().encode(audioConcat));
+          if (audioScenes.length === 1) {
+            // Single audio track - directly merge with video
+            await this.ffmpeg.exec([
+              "-i",
+              "output_video.mp4",
+              "-i",
+              "audio_0.mp3",
+              "-c:v",
+              "copy",
+              "-c:a",
+              "aac",
+              "-map",
+              "0:v:0",
+              "-map",
+              "1:a:0",
+              "-shortest",
+              "final_output.mp4",
+            ]);
+            console.log("Single audio track merged");
+          } else {
+            // Multiple audio tracks - use filter_complex to concat
+            const inputs = audioScenes.map((_, i) => ["-i", `audio_${i}.mp3`]).flat();
+            const filterInput = audioScenes.map((_, i) => `[${i}:a]`).join("");
+            const filterComplex = `${filterInput}concat=n=${audioScenes.length}:v=0:a=1[aout]`;
 
-          await this.ffmpeg.exec([
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            "audio_concat.txt",
-            "-c:a",
-            "aac",
-            "combined_audio.mp3",
-          ]);
+            await this.ffmpeg.exec([
+              ...inputs,
+              "-filter_complex",
+              filterComplex,
+              "-map",
+              "[aout]",
+              "combined_audio.aac",
+            ]);
 
-          // Combine with video
-          await this.ffmpeg.exec([
-            "-i",
-            "output_video.mp4",
-            "-i",
-            "combined_audio.mp3",
-            "-c:v",
-            "copy",
-            "-c:a",
-            "aac",
-            "-shortest",
-            "final_output.mp4",
-          ]);
+            console.log("Audio concatenated with filter_complex");
+
+            // Combine with video
+            await this.ffmpeg.exec([
+              "-i",
+              "output_video.mp4",
+              "-i",
+              "combined_audio.aac",
+              "-c:v",
+              "copy",
+              "-c:a",
+              "copy",
+              "-map",
+              "0:v:0",
+              "-map",
+              "1:a:0",
+              "-shortest",
+              "final_output.mp4",
+            ]);
+
+            console.log("Audio merged with video");
+          }
+        } catch (audioError) {
+          console.error("Audio processing failed:", audioError);
+          // If audio fails, just use video without audio
+          console.warn("Continuing without audio due to error");
+
+          // Copy video as final output
+          const videoData = await this.ffmpeg.readFile("output_video.mp4");
+          await this.ffmpeg.writeFile("final_output.mp4", videoData);
         }
 
         onProgress?.({

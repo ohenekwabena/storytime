@@ -8,8 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/lib/supabase/database.types";
-import { Play, Pause, Edit, Trash2, Plus, Download, Loader2, Image as ImageIcon, Music, Film, Volume2 } from "lucide-react";
-import { generateCharacterAction, generateSceneBackgroundAction, generateSceneAudioAction } from "@/app/actions/ai-actions";
+import {
+  Play,
+  Pause,
+  Edit,
+  Trash2,
+  Plus,
+  Download,
+  Loader2,
+  Image as ImageIcon,
+  Music,
+  Film,
+  Volume2,
+} from "lucide-react";
+import {
+  generateCharacterAction,
+  generateSceneBackgroundAction,
+  generateSceneAudioAction,
+} from "@/app/actions/ai-actions";
 
 type Story = Database["public"]["Tables"]["stories"]["Row"];
 type Character = Database["public"]["Tables"]["characters"]["Row"];
@@ -160,14 +176,11 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
     try {
       // Delete existing audio tracks for these scenes
-      const sceneIds = scenes.map(s => s.id);
-      const { error: deleteError } = await supabase
-        .from('audio_tracks')
-        .delete()
-        .in('scene_id', sceneIds);
+      const sceneIds = scenes.map((s) => s.id);
+      const { error: deleteError } = await supabase.from("audio_tracks").delete().in("scene_id", sceneIds);
 
       if (deleteError) {
-        console.warn('Failed to delete old audio tracks:', deleteError);
+        console.warn("Failed to delete old audio tracks:", deleteError);
       }
 
       for (let i = 0; i < scenes.length; i++) {
@@ -176,7 +189,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
         // Use script_text as the narration text
         const text = scene.script_text || `Scene ${scene.scene_number}`;
-        
+
         if (!text.trim()) continue;
 
         console.log(`Generating audio for scene ${scene.scene_number}:`, text);
@@ -186,7 +199,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
           const result = await generateSceneAudioAction(scene.id);
 
           if (!result.success) {
-            throw new Error(result.error || 'Failed to generate audio');
+            throw new Error(result.error || "Failed to generate audio");
           }
 
           console.log(`Audio generated for scene ${scene.scene_number}: ${result.duration?.toFixed(2)}s`);
@@ -289,11 +302,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
               )}
               Generate All Backgrounds
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleGenerateAudio}
-              disabled={generatingAudio}
-            >
+            <Button variant="outline" onClick={handleGenerateAudio} disabled={generatingAudio}>
               {generatingAudio ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

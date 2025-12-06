@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 export interface TTSOptions {
   text: string;
@@ -24,7 +24,7 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
 
   return new Promise((resolve, reject) => {
     if (!window.speechSynthesis) {
-      reject(new Error('Web Speech API not supported in this browser'));
+      reject(new Error("Web Speech API not supported in this browser"));
       return;
     }
 
@@ -49,7 +49,7 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
     // Track actual speaking duration
     let startTime = 0;
     let endTime = 0;
-    
+
     // Capture audio using Web Audio API
     const audioContext = new AudioContext();
     const destination = audioContext.createMediaStreamDestination();
@@ -66,30 +66,30 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
       try {
         // Use measured duration and create a simple blob
         const measuredDuration = (endTime - startTime) / 1000;
-        
+
         // Create audio blob from chunks
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+
         // If blob is too small, estimate duration from text
         let duration = measuredDuration;
         if (audioBlob.size < 1000) {
-          console.warn('Audio blob too small, using estimated duration');
+          console.warn("Audio blob too small, using estimated duration");
           duration = estimateSpeechDuration(text, rate);
         }
-        
+
         console.log(`Generated audio: ${duration.toFixed(2)}s (${audioBlob.size} bytes)`);
-        
+
         resolve({
           audioBlob,
           duration,
           transcript: text,
         });
       } catch (error) {
-        console.error('Audio generation failed:', error);
+        console.error("Audio generation failed:", error);
         // Fallback: return empty blob with estimated duration
         const duration = estimateSpeechDuration(text, rate);
         resolve({
-          audioBlob: new Blob([], { type: 'audio/wav' }),
+          audioBlob: new Blob([], { type: "audio/wav" }),
           duration,
           transcript: text,
         });
@@ -105,14 +105,14 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
     utterance.onend = () => {
       endTime = Date.now();
       setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
+        if (mediaRecorder.state === "recording") {
           mediaRecorder.stop();
         }
       }, 100); // Small delay to ensure all audio is captured
     };
 
     utterance.onerror = (error) => {
-      if (mediaRecorder.state === 'recording') {
+      if (mediaRecorder.state === "recording") {
         mediaRecorder.stop();
       }
       audioContext.close();
@@ -142,26 +142,26 @@ export function getAvailableVoices(): SpeechSynthesisVoice[] {
  */
 export async function generateSpeechElevenLabs(
   text: string,
-  voiceId: string = 'EXAVITQu4vr4xnSDxMaL' // Default: Bella (child-friendly female)
+  voiceId: string = "EXAVITQu4vr4xnSDxMaL" // Default: Bella (child-friendly female)
 ): Promise<AudioGenerationResult> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  
+
   if (!apiKey) {
-    throw new Error('ElevenLabs API key not configured in ELEVENLABS_API_KEY');
+    throw new Error("ElevenLabs API key not configured in ELEVENLABS_API_KEY");
   }
 
   console.log(`Generating TTS with ElevenLabs for ${text.length} characters`);
 
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Accept': 'audio/mpeg',
-      'Content-Type': 'application/json',
-      'xi-api-key': apiKey,
+      Accept: "audio/mpeg",
+      "Content-Type": "application/json",
+      "xi-api-key": apiKey,
     },
     body: JSON.stringify({
       text,
-      model_id: 'eleven_monolingual_v1',
+      model_id: "eleven_monolingual_v1",
       voice_settings: {
         stability: 0.5,
         similarity_boost: 0.75,
@@ -175,7 +175,7 @@ export async function generateSpeechElevenLabs(
   }
 
   const audioBlob = await response.blob();
-  
+
   // Estimate duration from text (ElevenLabs doesn't provide duration directly)
   const duration = estimateSpeechDuration(text, 1.0);
 
@@ -195,17 +195,17 @@ async function getAudioDuration(blob: Blob): Promise<number> {
   return new Promise((resolve, reject) => {
     const audio = new Audio();
     const url = URL.createObjectURL(blob);
-    
-    audio.addEventListener('loadedmetadata', () => {
+
+    audio.addEventListener("loadedmetadata", () => {
       URL.revokeObjectURL(url);
       resolve(audio.duration);
     });
-    
-    audio.addEventListener('error', () => {
+
+    audio.addEventListener("error", () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Failed to load audio metadata'));
+      reject(new Error("Failed to load audio metadata"));
     });
-    
+
     audio.src = url;
   });
 }
@@ -234,10 +234,10 @@ export async function generateSpeech(options: TTSOptions): Promise<AudioGenerati
  * ElevenLabs voice IDs (child-friendly voices)
  */
 export const ELEVENLABS_VOICES = {
-  BELLA: 'EXAVITQu4vr4xnSDxMaL', // Young female
-  RACHEL: '21m00Tcm4TlvDq8ikWAM', // Young adult female
-  DOMI: 'AZnzlk1XvdvUeBnXmlld', // Young adult female
-  ANTONI: 'ErXwobaYiN019PkySvjV', // Male narrator
-  JOSH: 'TxGEqnHWrfWFTfGW9XjX', // Young male
-  ARNOLD: 'VR6AewLTigWG4xSOukaG', // Male narrator
+  BELLA: "EXAVITQu4vr4xnSDxMaL", // Young female
+  RACHEL: "21m00Tcm4TlvDq8ikWAM", // Young adult female
+  DOMI: "AZnzlk1XvdvUeBnXmlld", // Young adult female
+  ANTONI: "ErXwobaYiN019PkySvjV", // Male narrator
+  JOSH: "TxGEqnHWrfWFTfGW9XjX", // Young male
+  ARNOLD: "VR6AewLTigWG4xSOukaG", // Male narrator
 } as const;

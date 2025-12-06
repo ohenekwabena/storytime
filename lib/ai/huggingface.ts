@@ -260,10 +260,12 @@ export async function generateSceneBackground(params: SceneGenerationParams): Pr
   // Build character descriptions for the prompt
   let characterPrompt = "";
   if (characters.length > 0) {
-    const characterDescriptions = characters.map((char) => {
-      const positionText = char.position ? `on the ${char.position}` : "";
-      return `${char.name} (${char.description}) ${positionText}`;
-    }).join(", ");
+    const characterDescriptions = characters
+      .map((char) => {
+        const positionText = char.position ? `on the ${char.position}` : "";
+        return `${char.name} (${char.description}) ${positionText}`;
+      })
+      .join(", ");
     characterPrompt = `, featuring ${characterDescriptions}`;
   }
 
