@@ -1,0 +1,25 @@
+{
+  "servers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_66ceee115ccf3bd69f559fe309785736a77b8670"
+      ]
+    },
+    "Figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    },
+    "motion": {
+      "command": "npx",
+      "args": ["-y", "motion-ai"]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    }
+  }
+}
