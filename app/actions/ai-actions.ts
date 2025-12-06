@@ -399,7 +399,7 @@ export async function saveSceneAudioAction(sceneId: string, audioBlob: Blob, dur
     // Convert blob to file for upload
     const fileName = `${user.id}/${scene.story_id}/audio_${sceneId}_${Date.now()}.webm`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("audio-files")
+      .from("audio-tracks")
       .upload(fileName, audioBlob, {
         contentType: "audio/webm",
         upsert: false,
@@ -412,7 +412,7 @@ export async function saveSceneAudioAction(sceneId: string, audioBlob: Blob, dur
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from("audio-files").getPublicUrl(fileName);
+    } = supabase.storage.from("audio-tracks").getPublicUrl(fileName);
 
     // Create audio track record
     const { data: audioTrack, error: audioError } = await supabase
