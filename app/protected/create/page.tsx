@@ -1,27 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { generateStoryAction } from '@/app/actions/ai-actions';
-import { Loader2, Sparkles, BookOpen, Users, Image as ImageIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { generateStoryAction } from "@/app/actions/ai-actions";
+import { Loader2, Sparkles, BookOpen, Users, Image as ImageIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function CreateStoryPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState<'cartoon' | 'anime' | 'realistic' | 'comic'>('cartoon');
-  const [targetLength, setTargetLength] = useState<'short' | 'medium' | 'long'>('short');
-  const [ageGroup, setAgeGroup] = useState<'toddler' | 'preschool' | 'elementary'>('preschool');
+  const [prompt, setPrompt] = useState("");
+  const [style, setStyle] = useState<"cartoon" | "anime" | "realistic" | "comic">("cartoon");
+  const [targetLength, setTargetLength] = useState<"short" | "medium" | "long">("short");
+  const [ageGroup, setAgeGroup] = useState<"toddler" | "preschool" | "elementary">("preschool");
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setError('Please enter a story prompt');
+      setError("Please enter a story prompt");
       return;
     }
 
@@ -43,7 +43,7 @@ export default function CreateStoryPage() {
         router.push(`/protected/story/${result.story.id}`);
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      setError("An unexpected error occurred. Please try again.");
       console.error(err);
     } finally {
       setIsGenerating(false);
@@ -51,19 +51,15 @@ export default function CreateStoryPage() {
   };
 
   const examplePrompts = [
-    'A brave little bunny who learns to overcome their fear of the dark',
-    'Two best friends who discover a magical garden in their backyard',
-    'A curious kitten who goes on an adventure to find the perfect birthday gift',
-    'A young dragon who wants to be a chef instead of scary',
+    "A brave little bunny who learns to overcome their fear of the dark",
+    "Two best friends who discover a magical garden in their backyard",
+    "A curious kitten who goes on an adventure to find the perfect birthday gift",
+    "A young dragon who wants to be a chef instead of scary",
   ];
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-2">
             <Sparkles className="w-8 h-8 text-yellow-500" />
@@ -77,9 +73,7 @@ export default function CreateStoryPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Story Details</CardTitle>
-            <CardDescription>
-              Tell us about the story you want to create
-            </CardDescription>
+            <CardDescription>Tell us about the story you want to create</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Prompt Input */}
@@ -121,10 +115,10 @@ export default function CreateStoryPage() {
             <div className="space-y-2">
               <Label>Animation Style</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {(['cartoon', 'anime', 'realistic', 'comic'] as const).map((s) => (
+                {(["cartoon", "anime", "realistic", "comic"] as const).map((s) => (
                   <Button
                     key={s}
-                    variant={style === s ? 'default' : 'outline'}
+                    variant={style === s ? "default" : "outline"}
                     onClick={() => setStyle(s)}
                     disabled={isGenerating}
                     className="capitalize"
@@ -140,10 +134,10 @@ export default function CreateStoryPage() {
             <div className="space-y-2">
               <Label>Story Length</Label>
               <div className="grid grid-cols-3 gap-2">
-                {(['short', 'medium', 'long'] as const).map((len) => (
+                {(["short", "medium", "long"] as const).map((len) => (
                   <Button
                     key={len}
-                    variant={targetLength === len ? 'default' : 'outline'}
+                    variant={targetLength === len ? "default" : "outline"}
                     onClick={() => setTargetLength(len)}
                     disabled={isGenerating}
                     className="capitalize"
@@ -153,19 +147,17 @@ export default function CreateStoryPage() {
                   </Button>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground">
-                Short: 2-3 min • Medium: 4-6 min • Long: 7-10 min
-              </p>
+              <p className="text-sm text-muted-foreground">Short: 2-3 min • Medium: 4-6 min • Long: 7-10 min</p>
             </div>
 
             {/* Age Group Selection */}
             <div className="space-y-2">
               <Label>Age Group</Label>
               <div className="grid grid-cols-3 gap-2">
-                {(['toddler', 'preschool', 'elementary'] as const).map((age) => (
+                {(["toddler", "preschool", "elementary"] as const).map((age) => (
                   <Button
                     key={age}
-                    variant={ageGroup === age ? 'default' : 'outline'}
+                    variant={ageGroup === age ? "default" : "outline"}
                     onClick={() => setAgeGroup(age)}
                     disabled={isGenerating}
                     className="capitalize"
@@ -185,12 +177,7 @@ export default function CreateStoryPage() {
             )}
 
             {/* Generate Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
-              className="w-full"
-              size="lg"
-            >
+            <Button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()} className="w-full" size="lg">
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

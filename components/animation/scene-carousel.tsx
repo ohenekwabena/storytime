@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { AnimationScene } from '@/lib/types/animation';
-import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { AnimationScene } from "@/lib/types/animation";
+import { Button } from "@/components/ui/button";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 interface SceneCarouselProps {
   scenes: AnimationScene[];
@@ -12,19 +12,37 @@ interface SceneCarouselProps {
   className?: string;
 }
 
-export default function SceneCarousel({
-  scenes,
-  isPlaying,
-  onPlayPause,
-  className = '',
-}: SceneCarouselProps) {
+export default function SceneCarousel({ scenes, isPlaying, onPlayPause, className = "" }: SceneCarouselProps) {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentScene = scenes[currentSceneIndex];
   const totalScenes = scenes.length;
+
+  // Play audio when scene changes or play state changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    if (isPlaying && currentScene?.audioUrl) {
+      const audio = new Audio(currentScene.audioUrl);
+      audioRef.current = audio;
+      
+      audio.play().catch((error) => {
+        console.warn('Audio playback failed:', error);
+      });
+
+      return () => {
+        audio.pause();
+        audio.src = '';
+      };
+    }
+  }, [currentSceneIndex, isPlaying, currentScene?.audioUrl]);
 
   // Auto-advance to next scene based on duration
   useEffect(() => {
@@ -44,7 +62,7 @@ export default function SceneCarousel({
       const elapsed = Date.now() - startTimeRef.current;
       const duration = currentScene.duration * 1000;
       const newProgress = Math.min((elapsed / duration) * 100, 100);
-      
+
       setProgress(newProgress);
 
       // Move to next scene when current scene finishes
@@ -99,7 +117,7 @@ export default function SceneCarousel({
           alt={`Scene ${currentSceneIndex + 1}`}
           className="w-full h-full object-contain transition-opacity duration-300"
         />
-        
+
         {/* Scene Info Overlay */}
         <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded-md text-sm">
           Scene {currentSceneIndex + 1} of {totalScenes}
@@ -136,17 +154,8 @@ export default function SceneCarousel({
             <SkipBack className="h-5 w-5" />
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onPlayPause}
-            className="text-white hover:bg-white/20 w-12 h-12"
-          >
-            {isPlaying ? (
-              <Pause className="h-6 w-6" />
-            ) : (
-              <Play className="h-6 w-6" />
-            )}
+          <Button variant="ghost" size="icon" onClick={onPlayPause} className="text-white hover:bg-white/20 w-12 h-12">
+            {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
           </Button>
 
           <Button
@@ -167,16 +176,10 @@ export default function SceneCarousel({
               key={index}
               onClick={() => goToScene(index)}
               className={`relative flex-shrink-0 w-20 h-12 rounded overflow-hidden border-2 transition-all ${
-                index === currentSceneIndex
-                  ? 'border-blue-500 scale-110'
-                  : 'border-transparent hover:border-gray-400'
+                index === currentSceneIndex ? "border-blue-500 scale-110" : "border-transparent hover:border-gray-400"
               }`}
             >
-              <img
-                src={scene.backgroundUrl}
-                alt={`Scene ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
+              <img src={scene.backgroundUrl} alt={`Scene ${index + 1}`} className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-xs">
                 {index + 1}
               </div>

@@ -1,36 +1,26 @@
-'use client';
+"use client";
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/lib/supabase/client';
-import { Database } from '@/lib/supabase/database.types';
-import SceneCarousel from '@/components/animation/scene-carousel';
-import { getFFmpegGenerator, type VideoGenerationProgress } from '@/lib/video/ffmpeg-generator';
-import type { AnimationScene } from '@/lib/types/animation';
-import { 
-  ArrowLeft,
-  Play,
-  Pause,
-  RotateCcw,
-  Download,
-  Loader2,
-  Volume2,
-  VolumeX,
-  Film
-} from 'lucide-react';
+import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
+import { Database } from "@/lib/supabase/database.types";
+import SceneCarousel from "@/components/animation/scene-carousel";
+import { getFFmpegGenerator, type VideoGenerationProgress } from "@/lib/video/ffmpeg-generator";
+import type { AnimationScene } from "@/lib/types/animation";
+import { ArrowLeft, Play, Pause, RotateCcw, Download, Loader2, Volume2, VolumeX, Film } from "lucide-react";
 
-type Story = Database['public']['Tables']['stories']['Row'];
-type Character = Database['public']['Tables']['characters']['Row'];
-type Scene = Database['public']['Tables']['scenes']['Row'];
+type Story = Database["public"]["Tables"]["stories"]["Row"];
+type Character = Database["public"]["Tables"]["characters"]["Row"];
+type Scene = Database["public"]["Tables"]["scenes"]["Row"];
 
 export default function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  
+
   const [story, setStory] = useState<Story | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -48,61 +38,65 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
   const loadData = async () => {
     setIsLoading(true);
-    console.log('Loading preview data for story:', id);
+    console.log("Loading preview data for story:", id);
 
     // Load story
-    const { data: storyData } = await supabase
-      .from('stories')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data: storyData } = await supabase.from("stories").select("*").eq("id", id).single();
 
     if (!storyData) {
-      console.error('Story not found');
+      console.error("Story not found");
       setIsLoading(false);
       return;
     }
 
-    console.log('Story loaded:', storyData.title);
+    console.log("Story loaded:", storyData.title);
     setStory(storyData);
 
     // Load characters
-    const { data: charactersData } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('story_id', id);
+    const { data: charactersData } = await supabase.from("characters").select("*").eq("story_id", id);
 
     if (charactersData) {
-      console.log('Characters loaded:', charactersData.length);
+      console.log("Characters loaded:", charactersData.length);
       setCharacters(charactersData);
     }
 
     // Load scenes
-    const { data: scenesData } = await supabase
-      .from('scenes')
-      .select('*')
-      .eq('story_id', id)
-      .order('scene_number');
+    const { data: scenesData } = await supabase.from("scenes").select("*").eq("story_id", id).order("scene_number");
 
     if (scenesData) {
-      console.log('Scenes loaded:', scenesData.length);
+      console.log("Scenes loaded:", scenesData.length);
       setScenes(scenesData);
-      convertToAnimationScenes(scenesData, charactersData || []);
+      
+      // Load audio tracks for scenes
+      const { data: audioTracks } = await supabase
+        .from("audio_tracks")
+        .select("scene_id, audio_url, duration")
+        .eq("type", "narration")
+        .in("scene_id", scenesData.map(s => s.id));
+      
+      convertToAnimationScenes(scenesData, charactersData || [], audioTracks || []);
     }
 
     setIsLoading(false);
   };
 
-  const convertToAnimationScenes = (sceneList: Scene[], characterList: Character[]) => {
-    const converted: AnimationScene[] = sceneList.map((scene) => ({
-      title: scene.title || `Scene ${scene.scene_number}`,
-      backgroundUrl: scene.background_url || '',
-      duration: scene.duration || 5,
-      audioUrl: undefined, // Can add TTS narration later
-    }));
+  const convertToAnimationScenes = (
+    sceneList: Scene[], 
+    characterList: Character[], 
+    audioTracks: Array<{ scene_id: string; audio_url: string; duration: number }> = []
+  ) => {
+    const converted: AnimationScene[] = sceneList.map((scene) => {
+      const audio = audioTracks.find(a => a.scene_id === scene.id);
+      return {
+        title: scene.title || `Scene ${scene.scene_number}`,
+        backgroundUrl: scene.background_url || "",
+        duration: audio?.duration || scene.duration || 5,
+        audioUrl: audio?.audio_url,
+      };
+    });
 
     setAnimationScenes(converted);
-    console.log('Animation scenes prepared:', converted.length, 'scenes');
+    console.log("Animation scenes prepared:", converted.length, "scenes", audioTracks.length, "with audio");
   };
 
   const handlePlayPause = () => {
@@ -114,22 +108,22 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
     setIsExporting(true);
     setExportProgress({
-      stage: 'loading',
+      stage: "loading",
       progress: 0,
-      message: 'Preparing to generate video...',
+      message: "Preparing to generate video...",
     });
 
     try {
       const generator = getFFmpegGenerator();
 
-      // Prepare scene data for FFmpeg
-      const videoScenes = scenes.map(scene => ({
-        imageUrl: scene.background_url || '',
-        duration: scene.duration || 5,
-        audioUrl: undefined, // Will add audio in next step
+      // Prepare scene data for FFmpeg (use animationScenes which has audio)
+      const videoScenes = animationScenes.map((scene) => ({
+        imageUrl: scene.backgroundUrl,
+        duration: scene.duration,
+        audioUrl: scene.audioUrl,
       }));
 
-      console.log('Generating video with FFmpeg:', videoScenes.length, 'scenes');
+      console.log("Generating video with FFmpeg:", videoScenes.length, "scenes");
 
       // Generate video
       const videoBlob = await generator.generateVideo(
@@ -144,21 +138,21 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         }
       );
 
-      console.log('Video generated:', videoBlob.size, 'bytes');
+      console.log("Video generated:", videoBlob.size, "bytes");
 
       // Upload to Supabase Storage
       setExportProgress({
-        stage: 'finalizing',
+        stage: "finalizing",
         progress: 95,
-        message: 'Uploading video...',
+        message: "Uploading video...",
       });
 
       const fileName = `${story.id}_${Date.now()}.mp4`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('video-exports')
+        .from("video-exports")
         .upload(fileName, videoBlob, {
-          contentType: 'video/mp4',
-          cacheControl: '3600',
+          contentType: "video/mp4",
+          cacheControl: "3600",
         });
 
       if (uploadError) {
@@ -166,30 +160,30 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
       }
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('video-exports')
-        .getPublicUrl(fileName);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("video-exports").getPublicUrl(fileName);
 
       // Save to database
-      await supabase.from('video_exports').insert({
+      await supabase.from("video_exports").insert({
         story_id: story.id,
         video_url: publicUrl,
         duration: scenes.reduce((sum, s) => sum + (s.duration || 5), 0),
-        resolution: '1280x720',
-        status: 'completed',
+        resolution: "1280x720",
+        status: "completed",
       });
 
       setExportProgress({
-        stage: 'complete',
+        stage: "complete",
         progress: 100,
-        message: 'Video exported successfully!',
+        message: "Video exported successfully!",
       });
 
       // Download the video
       const url = URL.createObjectURL(videoBlob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `${story.title.replace(/\s+/g, '_')}.mp4`;
+      a.download = `${story.title.replace(/\s+/g, "_")}.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -200,13 +194,13 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         setExportProgress(null);
       }, 2000);
     } catch (error) {
-      console.error('Export error:', error);
+      console.error("Export error:", error);
       setExportProgress({
-        stage: 'loading',
+        stage: "loading",
         progress: 0,
-        message: 'Failed to generate video. Please try again.',
+        message: "Failed to generate video. Please try again.",
       });
-      
+
       setTimeout(() => {
         setIsExporting(false);
         setExportProgress(null);
@@ -227,48 +221,37 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="mb-4">Story not found</p>
-          <Button onClick={() => router.push('/protected')}>
-            Back to Dashboard
-          </Button>
+          <Button onClick={() => router.push("/protected")}>Back to Dashboard</Button>
         </div>
       </div>
     );
   }
 
   // Check if story is ready for preview
-  const hasCharacterImages = characters.every(c => c.image_url);
-  const hasSceneBackgrounds = scenes.every(s => s.background_url);
+  const hasCharacterImages = characters.every((c) => c.image_url);
+  const hasSceneBackgrounds = scenes.every((s) => s.background_url);
   const isReady = hasCharacterImages && hasSceneBackgrounds && animationScenes.length > 0;
 
   return (
     <div className="container max-w-7xl mx-auto py-6 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/protected/story/${id}`)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => router.push(`/protected/story/${id}`)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Editor
             </Button>
             <div>
               <h1 className="text-2xl font-bold">{story.title}</h1>
               <p className="text-sm text-muted-foreground">
-                {animationScenes.length} {animationScenes.length === 1 ? 'scene' : 'scenes'}
+                {animationScenes.length} {animationScenes.length === 1 ? "scene" : "scenes"}
               </p>
             </div>
           </div>
           <div className="flex gap-2">
             <Badge>{story.style}</Badge>
-            <Badge variant={isReady ? 'default' : 'secondary'}>
-              {isReady ? 'Ready' : 'Incomplete'}
-            </Badge>
+            <Badge variant={isReady ? "default" : "secondary"}>{isReady ? "Ready" : "Incomplete"}</Badge>
           </div>
         </div>
 
@@ -279,20 +262,11 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
             </CardHeader>
             <CardContent>
               <ul className="list-disc list-inside space-y-1 text-sm">
-                {!hasCharacterImages && (
-                  <li>Some characters are missing images</li>
-                )}
-                {!hasSceneBackgrounds && (
-                  <li>Some scenes are missing backgrounds</li>
-                )}
-                {animationScenes.length === 0 && (
-                  <li>No scenes available for animation</li>
-                )}
+                {!hasCharacterImages && <li>Some characters are missing images</li>}
+                {!hasSceneBackgrounds && <li>Some scenes are missing backgrounds</li>}
+                {animationScenes.length === 0 && <li>No scenes available for animation</li>}
               </ul>
-              <Button
-                className="mt-4"
-                onClick={() => router.push(`/protected/story/${id}`)}
-              >
+              <Button className="mt-4" onClick={() => router.push(`/protected/story/${id}`)}>
                 Go to Editor
               </Button>
             </CardContent>
@@ -315,9 +289,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                   <div className="text-center">
                     <Film className="w-16 h-16 mx-auto mb-4 opacity-50" />
                     <p>Preview unavailable</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      {isLoading ? 'Loading...' : 'No scenes'}
-                    </p>
+                    <p className="text-sm text-gray-400 mt-2">{isLoading ? "Loading..." : "No scenes"}</p>
                   </div>
                 </div>
               )}
@@ -330,11 +302,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                   Use the controls below to preview your story. When ready, export to video.
                 </p>
 
-                <Button
-                  onClick={handleExport}
-                  disabled={animationScenes.length === 0 || isExporting}
-                  size="lg"
-                >
+                <Button onClick={handleExport} disabled={animationScenes.length === 0 || isExporting} size="lg">
                   {isExporting ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />

@@ -9,7 +9,9 @@ import { Suspense } from "react";
 
 async function getUserStories() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/auth/login");
@@ -17,17 +19,17 @@ async function getUserStories() {
 
   // Get user profile with credits
   const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('credits, subscription_tier')
-    .eq('user_id', user.id)
+    .from("user_profiles")
+    .select("credits, subscription_tier")
+    .eq("user_id", user.id)
     .single();
 
   // Get user's stories
   const { data: stories } = await supabase
-    .from('stories')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    .from("stories")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
   return { profile, stories: stories || [] };
 }
@@ -37,13 +39,20 @@ async function StoriesContent() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'bg-gray-500';
-      case 'generating': return 'bg-blue-500';
-      case 'ready': return 'bg-green-500';
-      case 'rendering': return 'bg-yellow-500';
-      case 'completed': return 'bg-purple-500';
-      case 'failed': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case "draft":
+        return "bg-gray-500";
+      case "generating":
+        return "bg-blue-500";
+      case "ready":
+        return "bg-green-500";
+      case "rendering":
+        return "bg-yellow-500";
+      case "completed":
+        return "bg-purple-500";
+      case "failed":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -52,9 +61,7 @@ async function StoriesContent() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-4xl font-bold mb-2">My Stories</h1>
-          <p className="text-muted-foreground">
-            Create and manage your animated stories
-          </p>
+          <p className="text-muted-foreground">Create and manage your animated stories</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -75,9 +82,7 @@ async function StoriesContent() {
           <CardContent>
             <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-semibold mb-2">No stories yet</h2>
-            <p className="text-muted-foreground mb-6">
-              Start creating your first animated story!
-            </p>
+            <p className="text-muted-foreground mb-6">Start creating your first animated story!</p>
             <Link href="/protected/create">
               <Button size="lg">
                 <Plus className="w-5 h-5 mr-2" />
@@ -93,15 +98,11 @@ async function StoriesContent() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">
-                    <Badge className={getStatusColor(story.status)}>
-                      {story.status}
-                    </Badge>
+                    <Badge className={getStatusColor(story.status)}>{story.status}</Badge>
                     <Badge variant="outline">{story.style}</Badge>
                   </div>
                   <CardTitle className="line-clamp-2">{story.title}</CardTitle>
-                  <CardDescription className="line-clamp-3">
-                    {story.description}
-                  </CardDescription>
+                  <CardDescription className="line-clamp-3">{story.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -109,13 +110,13 @@ async function StoriesContent() {
                       <Clock className="w-4 h-4" />
                       {new Date(story.created_at).toLocaleDateString()}
                     </div>
-                    {story.status === 'completed' && (
+                    {story.status === "completed" && (
                       <div className="flex items-center gap-1">
                         <Film className="w-4 h-4" />
                         Ready
                       </div>
                     )}
-                    {story.status === 'generating' && (
+                    {story.status === "generating" && (
                       <div className="flex items-center gap-1">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Processing
@@ -135,11 +136,13 @@ async function StoriesContent() {
 export default function ProtectedPage() {
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4">
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        }
+      >
         <StoriesContent />
       </Suspense>
     </div>

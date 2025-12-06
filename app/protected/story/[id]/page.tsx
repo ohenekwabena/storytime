@@ -1,41 +1,33 @@
-'use client';
+"use client";
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/lib/supabase/client';
-import { Database } from '@/lib/supabase/database.types';
-import { 
-  Play, 
-  Pause, 
-  Edit, 
-  Trash2, 
-  Plus, 
-  Download,
-  Loader2,
-  Image as ImageIcon,
-  Music,
-  Film
-} from 'lucide-react';
-import { generateCharacterAction, generateSceneBackgroundAction } from '@/app/actions/ai-actions';
+import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
+import { Database } from "@/lib/supabase/database.types";
+import { Play, Pause, Edit, Trash2, Plus, Download, Loader2, Image as ImageIcon, Music, Film, Volume2 } from "lucide-react";
+import { generateCharacterAction, generateSceneBackgroundAction, generateSceneAudioAction, saveSceneAudioAction } from "@/app/actions/ai-actions";
+import { generateSpeech } from "@/lib/audio/tts";
 
-type Story = Database['public']['Tables']['stories']['Row'];
-type Character = Database['public']['Tables']['characters']['Row'];
-type Scene = Database['public']['Tables']['scenes']['Row'];
+type Story = Database["public"]["Tables"]["stories"]["Row"];
+type Character = Database["public"]["Tables"]["characters"]["Row"];
+type Scene = Database["public"]["Tables"]["scenes"]["Row"];
 
 export default function StoryEditorPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap params using React.use()
   const { id } = use(params);
-  
+
   const [story, setStory] = useState<Story | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [generatingCharacters, setGeneratingCharacters] = useState(false);
   const [generatingBackgrounds, setGeneratingBackgrounds] = useState(false);
+  const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState({ current: 0, total: 0 });
 
   const supabase = createClient();
   const router = useRouter();
@@ -48,11 +40,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     setIsLoading(true);
 
     // Load story
-    const { data: storyData } = await supabase
-      .from('stories')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data: storyData } = await supabase.from("stories").select("*").eq("id", id).single();
 
     if (storyData) {
       setStory(storyData);
@@ -61,13 +49,9 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       let scriptData: any = null;
       if (storyData.script) {
         scriptData = JSON.parse(storyData.script);
-        
+
         // Check if scenes exist
-        const { data: scenesData } = await supabase
-          .from('scenes')
-          .select('*')
-          .eq('story_id', id)
-          .order('scene_number');
+        const { data: scenesData } = await supabase.from("scenes").select("*").eq("story_id", id).order("scene_number");
 
         if (!scenesData || scenesData.length === 0) {
           // Create scenes from script
@@ -78,10 +62,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       }
 
       // Load characters
-      const { data: charactersData } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('story_id', id);
+      const { data: charactersData } = await supabase.from("characters").select("*").eq("story_id", id);
 
       if (charactersData) {
         setCharacters(charactersData);
@@ -101,15 +82,12 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       story_id: storyId,
       scene_number: index + 1,
       title: scene.title || `Scene ${index + 1}`,
-      script_text: scene.narration || '',
+      script_text: scene.narration || "",
       background_description: scene.setting,
       duration: 5.0,
     }));
 
-    const { data } = await supabase
-      .from('scenes')
-      .insert(scenesData)
-      .select();
+    const { data } = await supabase.from("scenes").insert(scenesData).select();
 
     if (data) {
       setScenes(data);
@@ -123,7 +101,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       await generateCharacterAction(storyId, {
         name: charData.name,
         description: charData.description,
-        style: story?.style as any || 'cartoon',
+        style: (story?.style as any) || "cartoon",
       });
     }
 
@@ -147,30 +125,27 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       }
       await loadStoryData();
     } catch (error) {
-      console.error('Error generating backgrounds:', error);
-      alert('Failed to generate backgrounds. Please try again.');
+      console.error("Error generating backgrounds:", error);
+      alert("Failed to generate backgrounds. Please try again.");
     } finally {
       setGeneratingBackgrounds(false);
     }
   };
 
   const handleDeleteStory = async () => {
-    if (!confirm('Are you sure you want to delete this story? This cannot be undone.')) {
+    if (!confirm("Are you sure you want to delete this story? This cannot be undone.")) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('stories')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("stories").delete().eq("id", id);
 
       if (error) throw error;
 
-      router.push('/protected');
+      router.push("/protected");
     } catch (error) {
-      console.error('Error deleting story:', error);
-      alert('Failed to delete story. Please try again.');
+      console.error("Error deleting story:", error);
+      alert("Failed to delete story. Please try again.");
     }
   };
 
@@ -179,24 +154,85 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleGenerateAudio = async () => {
-    // TODO: Implement audio generation
-    alert('Audio generation coming soon! This will generate narration and dialogue for all scenes.');
+    if (!story || scenes.length === 0) return;
+
+    setGeneratingAudio(true);
+    setAudioProgress({ current: 0, total: scenes.length });
+
+    try {
+      for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i];
+        setAudioProgress({ current: i + 1, total: scenes.length });
+
+        // Use script_text as the narration text
+        const text = scene.script_text || `Scene ${scene.scene_number}`;
+        
+        if (!text.trim()) continue;
+
+        console.log(`Generating audio for scene ${scene.scene_number}:`, text);
+
+        try {
+          // Generate speech using Web Speech API (browser-based, free)
+          const result = await generateSpeech({
+            text,
+            rate: 1.0,
+            pitch: 1.0,
+          });
+
+          console.log(`Audio generated for scene ${scene.scene_number}:`, result.duration, 'seconds');
+
+          // Save to Supabase
+          const saveResult = await saveSceneAudioAction(
+            scene.id,
+            result.audioBlob,
+            result.duration,
+            result.transcript
+          );
+
+          if (saveResult.error) {
+            console.error(`Failed to save audio for scene ${scene.scene_number}:`, saveResult.error);
+            continue;
+          }
+
+          console.log(`Audio saved for scene ${scene.scene_number}`);
+        } catch (error) {
+          console.error(`Error generating audio for scene ${scene.scene_number}:`, error);
+          // Continue with next scene even if one fails
+        }
+      }
+
+      alert(`Audio generation complete! Generated narration for ${scenes.length} scenes.`);
+      loadStoryData(); // Reload to show audio indicators
+    } catch (error) {
+      console.error("Error generating audio:", error);
+      alert("Failed to generate audio. Please try again.");
+    } finally {
+      setGeneratingAudio(false);
+      setAudioProgress({ current: 0, total: 0 });
+    }
   };
 
   const handleExportVideo = async () => {
     // TODO: Implement video export
-    alert('Video export coming soon! This will render your story as a video file.');
+    alert("Video export coming soon! This will render your story as a video file.");
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'bg-gray-500';
-      case 'generating': return 'bg-blue-500';
-      case 'ready': return 'bg-green-500';
-      case 'rendering': return 'bg-yellow-500';
-      case 'completed': return 'bg-purple-500';
-      case 'failed': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case "draft":
+        return "bg-gray-500";
+      case "generating":
+        return "bg-blue-500";
+      case "ready":
+        return "bg-green-500";
+      case "rendering":
+        return "bg-yellow-500";
+      case "completed":
+        return "bg-purple-500";
+      case "failed":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -218,11 +254,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
@@ -253,7 +285,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
           <CardContent className="flex flex-wrap gap-2">
             <Button
               onClick={generateAllBackgrounds}
-              disabled={generatingBackgrounds || scenes.every(s => s.background_url)}
+              disabled={generatingBackgrounds || scenes.every((s) => s.background_url)}
             >
               {generatingBackgrounds ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -262,9 +294,22 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
               )}
               Generate All Backgrounds
             </Button>
-            <Button variant="outline" onClick={handleGenerateAudio}>
-              <Music className="w-4 h-4 mr-2" />
-              Generate Audio
+            <Button 
+              variant="outline" 
+              onClick={handleGenerateAudio}
+              disabled={generatingAudio}
+            >
+              {generatingAudio ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating ({audioProgress.current}/{audioProgress.total})
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Generate Audio
+                </>
+              )}
             </Button>
             <Button variant="outline" onClick={handlePreviewAnimation}>
               <Film className="w-4 h-4 mr-2" />
@@ -282,7 +327,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
           <CardHeader>
             <CardTitle>Characters ({characters.length})</CardTitle>
             <CardDescription>
-              {generatingCharacters ? 'Generating character images...' : 'Characters in this story'}
+              {generatingCharacters ? "Generating character images..." : "Characters in this story"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -291,11 +336,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                 <div key={character.id} className="space-y-2">
                   <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                     {character.image_url ? (
-                      <img
-                        src={character.image_url}
-                        alt={character.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={character.image_url} alt={character.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Loader2 className="w-8 h-8 animate-spin" />
@@ -304,16 +345,14 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div>
                     <p className="font-semibold">{character.name}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {character.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{character.description}</p>
                   </div>
                 </div>
               ))}
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="aspect-square"
-                onClick={() => alert('Add character functionality coming soon!')}
+                onClick={() => alert("Add character functionality coming soon!")}
               >
                 <Plus className="w-8 h-8" />
               </Button>
@@ -357,23 +396,13 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                           <h3 className="font-semibold">
                             Scene {scene.scene_number}: {scene.title}
                           </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {scene.background_description}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{scene.background_description}</p>
                         </div>
                         <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => alert('Scene editor coming soon!')}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => alert("Scene editor coming soon!")}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => alert('Scene preview coming soon!')}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => alert("Scene preview coming soon!")}>
                             <Play className="w-4 h-4" />
                           </Button>
                         </div>
