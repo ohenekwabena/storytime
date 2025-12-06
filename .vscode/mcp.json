@@ -15,11 +15,17 @@
     },
     "motion": {
       "command": "npx",
-      "args": ["-y", "motion-ai"]
+      "args": [
+        "-y",
+        "motion-ai"
+      ]
     },
     "shadcn": {
       "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
 }

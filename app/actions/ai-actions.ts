@@ -24,13 +24,6 @@ export async function generateStoryAction(params: StoryGenerationParams) {
       return { error: "Unauthorized" };
     }
 
-    // Check user credits
-    const { data: profile } = await supabase.from("user_profiles").select("credits").eq("user_id", user.id).single();
-
-    if (!profile || profile.credits < 10) {
-      return { error: "Insufficient credits. Story generation requires 10 credits." };
-    }
-
     // Generate story using AI
     const storyResponse = await generateStory(params);
     const storyData = parseStoryJSON(storyResponse);
@@ -53,12 +46,6 @@ export async function generateStoryAction(params: StoryGenerationParams) {
       return { error: storyError.message };
     }
 
-    // Deduct credits
-    await supabase
-      .from("user_profiles")
-      .update({ credits: profile.credits - 10 })
-      .eq("user_id", user.id);
-
     revalidatePath("/protected");
     return { story, storyData };
   } catch (error) {
@@ -69,6 +56,7 @@ export async function generateStoryAction(params: StoryGenerationParams) {
 
 export async function generateCharacterAction(storyId: string, params: CharacterGenerationParams) {
   try {
+    console.log("[generateCharacterAction] Starting with params:", params);
     const supabase = await createClient();
 
     const {
@@ -76,28 +64,31 @@ export async function generateCharacterAction(storyId: string, params: Character
     } = await supabase.auth.getUser();
 
     if (!user) {
+      console.error("[generateCharacterAction] No user found");
       return { error: "Unauthorized" };
     }
+
+    console.log("[generateCharacterAction] User authenticated:", user.id);
 
     // Verify story ownership
     const { data: story } = await supabase.from("stories").select("user_id").eq("id", storyId).single();
 
     if (!story || story.user_id !== user.id) {
+      console.error("[generateCharacterAction] Story not found or unauthorized");
       return { error: "Story not found or unauthorized" };
     }
 
-    // Check user credits
-    const { data: profile } = await supabase.from("user_profiles").select("credits").eq("user_id", user.id).single();
-
-    if (!profile || profile.credits < 5) {
-      return { error: "Insufficient credits. Character generation requires 5 credits." };
-    }
+    console.log("[generateCharacterAction] Story ownership verified");
+    console.log("[generateCharacterAction] Calling generateCharacterImage...");
 
     // Generate character image
     const imageBlob = await generateCharacterImage(params);
+    console.log("[generateCharacterAction] Image generated, blob size:", imageBlob.size);
 
     // Upload to Supabase Storage
     const fileName = `${user.id}/${storyId}/${params.name.replace(/\s+/g, "_")}_${Date.now()}.png`;
+    console.log("[generateCharacterAction] Uploading to:", fileName);
+
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("character-images")
       .upload(fileName, imageBlob, {
@@ -106,13 +97,18 @@ export async function generateCharacterAction(storyId: string, params: Character
       });
 
     if (uploadError) {
+      console.error("[generateCharacterAction] Upload error:", uploadError);
       return { error: `Upload failed: ${uploadError.message}` };
     }
+
+    console.log("[generateCharacterAction] Image uploaded successfully");
 
     // Get public URL
     const {
       data: { publicUrl },
     } = supabase.storage.from("character-images").getPublicUrl(fileName);
+
+    console.log("[generateCharacterAction] Public URL:", publicUrl);
 
     // Create character in database
     const { data: character, error: characterError } = await supabase
@@ -131,19 +127,16 @@ export async function generateCharacterAction(storyId: string, params: Character
       .single();
 
     if (characterError) {
+      console.error("[generateCharacterAction] Database error:", characterError);
       return { error: characterError.message };
     }
 
-    // Deduct credits
-    await supabase
-      .from("user_profiles")
-      .update({ credits: profile.credits - 5 })
-      .eq("user_id", user.id);
+    console.log("[generateCharacterAction] Character saved to database:", character.id);
 
     revalidatePath(`/protected/story/${storyId}`);
     return { character };
   } catch (error) {
-    console.error("Error generating character:", error);
+    console.error("[generateCharacterAction] Error:", error);
     return { error: error instanceof Error ? error.message : "Failed to generate character" };
   }
 }
@@ -207,13 +200,6 @@ export async function generateSceneBackgroundAction(sceneId: string, params: Sce
         };
       });
 
-    // Check user credits
-    const { data: profile } = await supabase.from("user_profiles").select("credits").eq("user_id", user.id).single();
-
-    if (!profile || profile.credits < 3) {
-      return { error: "Insufficient credits. Background generation requires 3 credits." };
-    }
-
     // Generate background image with characters included
     const imageBlob = await generateSceneBackground({
       ...params,
@@ -250,12 +236,6 @@ export async function generateSceneBackgroundAction(sceneId: string, params: Sce
     if (updateError) {
       return { error: updateError.message };
     }
-
-    // Deduct credits
-    await supabase
-      .from("user_profiles")
-      .update({ credits: profile.credits - 3 })
-      .eq("user_id", user.id);
 
     revalidatePath(`/protected/story/${scene.story_id}`);
     return { backgroundUrl: publicUrl };

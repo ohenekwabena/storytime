@@ -4,57 +4,76 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* Vibrant light theme */
+    --background: 240 100% 99%;
+    --foreground: 240 10% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 262 83% 58%; /* Vibrant purple */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 196 100% 48%; /* Bright cyan */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 20% 96%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 14 100% 57%; /* Vibrant orange */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --border: 240 20% 92%;
+    --input: 240 20% 92%;
+    --ring: 262 83% 58%;
+    --success: 142 76% 36%; /* Emerald green */
+    --warning: 38 92% 50%; /* Amber */
+    --info: 217 91% 60%; /* Blue */
+    --chart-1: 262 83% 58%;
+    --chart-2: 196 100% 48%;
+    --chart-3: 14 100% 57%;
+    --chart-4: 142 76% 36%;
+    --chart-5: 328 86% 70%;
+    --radius: 0.75rem;
+
+    /* Gradient colors */
+    --gradient-from: 262 83% 58%;
+    --gradient-via: 296 80% 65%;
+    --gradient-to: 328 86% 70%;
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Vibrant dark theme */
+    --background: 240 10% 8%;
+    --foreground: 240 10% 98%;
+    --card: 240 10% 12%;
+    --card-foreground: 240 10% 98%;
+    --popover: 240 10% 12%;
+    --popover-foreground: 240 10% 98%;
+    --primary: 262 83% 65%; /* Lighter purple for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 196 100% 55%; /* Brighter cyan for dark mode */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 10% 18%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 14 100% 60%; /* Brighter orange for dark mode */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 240 10% 20%;
+    --input: 240 10% 20%;
+    --ring: 262 83% 65%;
+    --success: 142 76% 45%;
+    --warning: 38 92% 60%;
+    --info: 217 91% 70%;
+    --chart-1: 262 83% 65%;
+    --chart-2: 196 100% 55%;
+    --chart-3: 14 100% 60%;
+    --chart-4: 142 76% 45%;
+    --chart-5: 328 86% 75%;
+
+    /* Gradient colors */
+    --gradient-from: 262 83% 65%;
+    --gradient-via: 296 80% 70%;
+    --gradient-to: 328 86% 75%;
   }
 }
 
@@ -64,5 +83,55 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--gradient-from)), hsl(var(--gradient-via)), hsl(var(--gradient-to)));
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--gradient-from)), hsl(var(--gradient-via)), hsl(var(--gradient-to)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass-effect {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 8s ease infinite;
+  }
+
+  @keyframes gradient {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 }
