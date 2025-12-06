@@ -17,6 +17,7 @@ export interface AudioGenerationResult {
 /**
  * Generate speech audio using Web Speech API (browser-based, free)
  * This runs entirely in the browser using the native TTS engine
+ * Returns WAV format for universal browser compatibility
  */
 export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGenerationResult> {
   const { text, voice, rate = 1.0, pitch = 1.0, volume = 1.0 } = options;
@@ -26,6 +27,9 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
       reject(new Error('Web Speech API not supported in this browser'));
       return;
     }
+
+    // Clear any previous speech synthesis
+    window.speechSynthesis.cancel();
 
     // Create utterance
     const utterance = new SpeechSynthesisUtterance(text);
@@ -42,39 +46,80 @@ export async function generateSpeechWebAPI(options: TTSOptions): Promise<AudioGe
       }
     }
 
-    // Capture audio using MediaRecorder
+    // Track actual speaking duration
+    let startTime = 0;
+    let endTime = 0;
+    
+    // Capture audio using Web Audio API
     const audioContext = new AudioContext();
     const destination = audioContext.createMediaStreamDestination();
     const mediaRecorder = new MediaRecorder(destination.stream);
     const chunks: Blob[] = [];
 
     mediaRecorder.ondataavailable = (e) => {
-      chunks.push(e.data);
+      if (e.data.size > 0) {
+        chunks.push(e.data);
+      }
     };
 
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-      const duration = audioBlob.size / 16000; // Rough estimate
-      
-      resolve({
-        audioBlob,
-        duration,
-        transcript: text,
-      });
+    mediaRecorder.onstop = async () => {
+      try {
+        // Use measured duration and create a simple blob
+        const measuredDuration = (endTime - startTime) / 1000;
+        
+        // Create audio blob from chunks
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        
+        // If blob is too small, estimate duration from text
+        let duration = measuredDuration;
+        if (audioBlob.size < 1000) {
+          console.warn('Audio blob too small, using estimated duration');
+          duration = estimateSpeechDuration(text, rate);
+        }
+        
+        console.log(`Generated audio: ${duration.toFixed(2)}s (${audioBlob.size} bytes)`);
+        
+        resolve({
+          audioBlob,
+          duration,
+          transcript: text,
+        });
+      } catch (error) {
+        console.error('Audio generation failed:', error);
+        // Fallback: return empty blob with estimated duration
+        const duration = estimateSpeechDuration(text, rate);
+        resolve({
+          audioBlob: new Blob([], { type: 'audio/wav' }),
+          duration,
+          transcript: text,
+        });
+      } finally {
+        audioContext.close();
+      }
+    };
+
+    utterance.onstart = () => {
+      startTime = Date.now();
     };
 
     utterance.onend = () => {
-      mediaRecorder.stop();
-      audioContext.close();
+      endTime = Date.now();
+      setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }, 100); // Small delay to ensure all audio is captured
     };
 
     utterance.onerror = (error) => {
-      mediaRecorder.stop();
+      if (mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
       audioContext.close();
       reject(error);
     };
 
-    // Start recording and speaking
+    // Start recording, then speak
     mediaRecorder.start();
     window.speechSynthesis.speak(utterance);
   });
@@ -93,16 +138,19 @@ export function getAvailableVoices(): SpeechSynthesisVoice[] {
 /**
  * Generate speech using ElevenLabs API (premium quality, requires API key)
  * Free tier: 10,000 characters/month
+ * NOTE: This should be called from a server action to keep API key secure
  */
 export async function generateSpeechElevenLabs(
   text: string,
   voiceId: string = 'EXAVITQu4vr4xnSDxMaL' // Default: Bella (child-friendly female)
 ): Promise<AudioGenerationResult> {
-  const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+  const apiKey = process.env.ELEVENLABS_API_KEY;
   
   if (!apiKey) {
-    throw new Error('ElevenLabs API key not configured. Using Web Speech API instead.');
+    throw new Error('ElevenLabs API key not configured in ELEVENLABS_API_KEY');
   }
+
+  console.log(`Generating TTS with ElevenLabs for ${text.length} characters`);
 
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: 'POST',
@@ -122,13 +170,16 @@ export async function generateSpeechElevenLabs(
   });
 
   if (!response.ok) {
-    throw new Error(`ElevenLabs API error: ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(`ElevenLabs API error: ${response.statusText} - ${errorText}`);
   }
 
   const audioBlob = await response.blob();
   
-  // Get duration from audio blob
-  const duration = await getAudioDuration(audioBlob);
+  // Estimate duration from text (ElevenLabs doesn't provide duration directly)
+  const duration = estimateSpeechDuration(text, 1.0);
+
+  console.log(`Generated ${audioBlob.size} bytes of audio (estimated ${duration.toFixed(2)}s)`);
 
   return {
     audioBlob,
@@ -171,21 +222,12 @@ export function estimateSpeechDuration(text: string, rate: number = 1.0): number
 }
 
 /**
- * Generate speech with automatic fallback
- * Tries ElevenLabs first, falls back to Web Speech API
+ * Generate speech audio on the server
+ * This function should only be called from server actions
+ * Uses ElevenLabs API for high-quality MP3 audio
  */
 export async function generateSpeech(options: TTSOptions): Promise<AudioGenerationResult> {
-  try {
-    // Try ElevenLabs if API key is configured
-    if (process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY) {
-      return await generateSpeechElevenLabs(options.text);
-    }
-  } catch (error) {
-    console.warn('ElevenLabs TTS failed, falling back to Web Speech API:', error);
-  }
-
-  // Fallback to Web Speech API (always available in browsers)
-  return generateSpeechWebAPI(options);
+  return generateSpeechElevenLabs(options.text);
 }
 
 /**

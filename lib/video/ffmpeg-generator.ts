@@ -83,11 +83,22 @@ export class FFmpegVideoGenerator {
         message: "Downloading scene images...",
       });
 
+      // Enable logging for debugging
+      this.ffmpeg.on("log", ({ message }) => {
+        console.log("FFmpeg:", message);
+      });
+
       // Download and write scene images
       for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
-        const imageData = await fetchFile(scene.imageUrl);
-        await this.ffmpeg.writeFile(`scene_${i}.png`, imageData);
+        try {
+          const imageData = await fetchFile(scene.imageUrl);
+          await this.ffmpeg.writeFile(`scene_${i}.png`, imageData);
+          console.log(`Written scene_${i}.png (${imageData.byteLength} bytes)`);
+        } catch (err) {
+          console.error(`Failed to download scene ${i}:`, err);
+          throw new Error(`Failed to load scene ${i + 1} image. Please ensure all images are generated.`);
+        }
 
         onProgress?.({
           stage: "preparing",
@@ -96,44 +107,84 @@ export class FFmpegVideoGenerator {
         });
       }
 
-      // Create concat file for scenes
-      const concatContent = scenes
-        .map((scene, i) => {
-          const frameDuration = scene.duration * fps;
-          return `file 'scene_${i}.png'\nduration ${scene.duration}`;
-        })
-        .join("\n");
-
-      await this.ffmpeg.writeFile("concat.txt", concatContent);
-
       onProgress?.({
         stage: "encoding",
         progress: 50,
         message: "Generating video...",
       });
 
-      // Create video from images
-      await this.ffmpeg.exec([
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        "concat.txt",
-        "-vf",
-        `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:${backgroundColor}`,
-        "-r",
-        String(fps),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-preset",
-        "medium",
-        "-crf",
-        "23",
-        "output_video.mp4",
-      ]);
+      // Simple approach: create video from first image, then concat with others
+      // This is more reliable than using concat demuxer
+      const videoSegments: string[] = [];
+
+      for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i];
+        const outputName = `segment_${i}.mp4`;
+        
+        console.log(`Creating segment ${i}: ${scene.duration}s`);
+
+        try {
+          // Create video segment from single image
+          await this.ffmpeg.exec([
+            "-loop", "1",
+            "-i", `scene_${i}.png`,
+            "-t", String(scene.duration),
+            "-vf", `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:${backgroundColor}`,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-r", String(fps),
+            "-preset", "ultrafast",
+            "-crf", "23",
+            outputName
+          ]);
+
+          // Verify the segment was created
+          const files = await this.ffmpeg.listDir('/');
+          console.log('Files after segment creation:', files);
+
+          videoSegments.push(outputName);
+        } catch (segmentError) {
+          console.error(`Failed to create segment ${i}:`, segmentError);
+          throw new Error(`Failed to encode scene ${i + 1}. Check that the image was loaded correctly.`);
+        }
+
+        onProgress?.({
+          stage: "encoding",
+          progress: 50 + (i / scenes.length) * 20,
+          message: `Encoding scene ${i + 1} of ${scenes.length}...`,
+        });
+      }
+
+      // Create concat file for video segments
+      let concatContent = "";
+      for (const segment of videoSegments) {
+        concatContent += `file '${segment}'\n`;
+      }
+
+      await this.ffmpeg.writeFile("concat.txt", new TextEncoder().encode(concatContent));
+      console.log("Concat file content:", concatContent);
+
+      // Concatenate video segments
+      onProgress?.({
+        stage: "encoding",
+        progress: 70,
+        message: "Combining scenes...",
+      });
+
+      try {
+        await this.ffmpeg.exec([
+          "-f", "concat",
+          "-safe", "0",
+          "-i", "concat.txt",
+          "-c", "copy",
+          "output_video.mp4"
+        ]);
+
+        console.log("Video concatenation complete");
+      } catch (concatError) {
+        console.error("Concatenation failed:", concatError);
+        throw new Error("Failed to combine video scenes. This may be due to codec incompatibilities.");
+      }
 
       // If we have audio files, process them
       const audioScenes = scenes.filter((s) => s.audioUrl);
@@ -168,9 +219,12 @@ export class FFmpegVideoGenerator {
           ]);
         } else {
           // Multiple audio tracks - concat them first
-          const audioConcat = audioScenes.map((_, i) => `file 'audio_${i}.mp3'`).join("\n");
+          let audioConcat = "";
+          for (let i = 0; i < audioScenes.length; i++) {
+            audioConcat += `file 'audio_${i}.mp3'\n`;
+          }
 
-          await this.ffmpeg.writeFile("audio_concat.txt", audioConcat);
+          await this.ffmpeg.writeFile("audio_concat.txt", new TextEncoder().encode(audioConcat));
 
           await this.ffmpeg.exec([
             "-f",
@@ -237,6 +291,9 @@ export class FFmpegVideoGenerator {
       }
     } catch (error) {
       console.error("Video generation error:", error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to generate video: ${error.message}`);
+      }
       throw new Error("Failed to generate video. Please try again.");
     } finally {
       // Cleanup

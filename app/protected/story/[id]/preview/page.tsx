@@ -96,10 +96,16 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     });
 
     setAnimationScenes(converted);
-    console.log("Animation scenes prepared:", converted.length, "scenes", audioTracks.length, "with audio");
+    console.log("Animation scenes prepared:", converted.length, "scenes,", audioTracks.length, "with audio");
+    console.log("Scene details:", converted.map(s => ({ 
+      title: s.title, 
+      duration: s.duration, 
+      hasAudio: !!s.audioUrl 
+    })));
   };
 
   const handlePlayPause = () => {
+    console.log('Play/Pause clicked, current state:', isPlaying, '-> new state:', !isPlaying);
     setIsPlaying(!isPlaying);
   };
 

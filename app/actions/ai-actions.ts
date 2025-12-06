@@ -337,7 +337,7 @@ export async function createScenesFromStoryAction(storyId: string, storyData: an
   }
 }
 
-export async function generateSceneAudioAction(sceneId: string, text: string) {
+export async function generateSceneAudioAction(sceneId: string) {
   try {
     const supabase = await createClient();
 
@@ -346,101 +346,80 @@ export async function generateSceneAudioAction(sceneId: string, text: string) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return { error: "Unauthorized" };
+      return { success: false, error: "Unauthorized" };
     }
 
-    // Verify scene ownership
+    // Get scene with text
     const { data: scene } = await supabase
       .from("scenes")
-      .select("story_id, duration, stories!inner(user_id)")
+      .select("script_text, story_id, scene_number, duration, stories!inner(user_id)")
       .eq("id", sceneId)
       .single();
 
     if (!scene || (scene.stories as any).user_id !== user.id) {
-      return { error: "Scene not found or unauthorized" };
+      return { success: false, error: "Scene not found or unauthorized" };
     }
 
-    // Return the text and sceneId for client-side TTS generation
-    // Client will generate audio using Web Speech API (free, browser-based)
-    return {
-      sceneId,
-      text,
-      storyId: scene.story_id,
-    };
-  } catch (error) {
-    console.error("Error preparing scene audio:", error);
-    return { error: error instanceof Error ? error.message : "Failed to prepare scene audio" };
-  }
-}
-
-export async function saveSceneAudioAction(sceneId: string, audioBlob: Blob, duration: number, transcript: string) {
-  try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { error: "Unauthorized" };
+    const text = scene.script_text || `Scene ${scene.scene_number}`;
+    
+    if (!text.trim()) {
+      return { success: false, error: "No text to narrate" };
     }
 
-    // Verify scene ownership
-    const { data: scene } = await supabase
-      .from("scenes")
-      .select("story_id, stories!inner(user_id)")
-      .eq("id", sceneId)
-      .single();
+    // Generate audio using ElevenLabs
+    const { generateSpeechElevenLabs } = await import("@/lib/audio/elevenlabs");
+    const result = await generateSpeechElevenLabs(text);
 
-    if (!scene || (scene.stories as any).user_id !== user.id) {
-      return { error: "Scene not found or unauthorized" };
-    }
-
-    // Convert blob to file for upload
-    const fileName = `${user.id}/${scene.story_id}/audio_${sceneId}_${Date.now()}.webm`;
+    // Upload to storage
+    const fileName = `${user.id}/${scene.story_id}/audio_${sceneId}_${Date.now()}.mp3`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("audio-tracks")
-      .upload(fileName, audioBlob, {
-        contentType: "audio/webm",
+      .upload(fileName, result.audioBlob, {
+        contentType: 'audio/mpeg',
         upsert: false,
       });
 
     if (uploadError) {
-      return { error: `Upload failed: ${uploadError.message}` };
+      return { success: false, error: uploadError.message };
     }
 
     // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("audio-tracks").getPublicUrl(fileName);
+    const { data: { publicUrl } } = supabase.storage
+      .from("audio-tracks")
+      .getPublicUrl(fileName);
 
-    // Create audio track record
-    const { data: audioTrack, error: audioError } = await supabase
-      .from("audio_tracks")
-      .insert({
-        scene_id: sceneId,
-        type: "narration",
-        audio_url: publicUrl,
-        transcript,
-        start_time: 0,
-        duration,
-      })
-      .select()
-      .single();
+    // Save audio track record
+    const { error: audioError } = await supabase.from("audio_tracks").insert({
+      scene_id: sceneId,
+      type: "narration",
+      audio_url: publicUrl,
+      transcript: result.transcript,
+      start_time: 0,
+      duration: result.duration,
+    });
 
     if (audioError) {
-      return { error: audioError.message };
+      return { success: false, error: audioError.message };
     }
 
-    // Update scene duration to match audio if longer
-    if (duration > (scene as any).duration) {
-      await supabase.from("scenes").update({ duration }).eq("id", sceneId);
+    // Update scene duration if audio is longer
+    if (result.duration > scene.duration) {
+      await supabase
+        .from("scenes")
+        .update({ duration: result.duration })
+        .eq("id", sceneId);
     }
 
-    revalidatePath(`/protected/story/${scene.story_id}`);
-    return { audioTrack, audioUrl: publicUrl };
+    return {
+      success: true,
+      duration: result.duration,
+      url: publicUrl,
+    };
   } catch (error) {
-    console.error("Error saving scene audio:", error);
-    return { error: error instanceof Error ? error.message : "Failed to save scene audio" };
+    console.error("Error generating scene audio:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to generate scene audio" 
+    };
   }
 }

@@ -30,17 +30,28 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
     }
 
     if (isPlaying && currentScene?.audioUrl) {
+      console.log(`Playing audio for scene ${currentSceneIndex + 1}:`, currentScene.audioUrl);
       const audio = new Audio(currentScene.audioUrl);
       audioRef.current = audio;
-      
+
       audio.play().catch((error) => {
         console.warn('Audio playback failed:', error);
       });
+
+      audio.onloadedmetadata = () => {
+        console.log(`Audio loaded, duration: ${audio.duration}s`);
+      };
+
+      audio.onended = () => {
+        console.log('Audio playback ended');
+      };
 
       return () => {
         audio.pause();
         audio.src = '';
       };
+    } else if (isPlaying && !currentScene?.audioUrl) {
+      console.log(`Scene ${currentSceneIndex + 1} has no audio`);
     }
   }, [currentSceneIndex, isPlaying, currentScene?.audioUrl]);
 
@@ -57,6 +68,8 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
     startTimeRef.current = Date.now();
     setProgress(0);
 
+    console.log(`Scene ${currentSceneIndex + 1} started, duration: ${currentScene.duration}s`);
+
     // Update progress bar every 50ms
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
@@ -67,12 +80,17 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
 
       // Move to next scene when current scene finishes
       if (elapsed >= duration) {
+        console.log(`Scene ${currentSceneIndex + 1} complete`);
         if (currentSceneIndex < totalScenes - 1) {
           setCurrentSceneIndex((prev) => prev + 1);
         } else {
-          // Loop back to start or stop
-          setCurrentSceneIndex(0);
-          onPlayPause(); // Auto-pause at end
+          // Reached the end - stop playing
+          console.log('All scenes complete, stopping playback');
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          onPlayPause(); // Stop at end
         }
       }
     }, 50);

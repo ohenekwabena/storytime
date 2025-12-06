@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/lib/supabase/database.types";
 import { Play, Pause, Edit, Trash2, Plus, Download, Loader2, Image as ImageIcon, Music, Film, Volume2 } from "lucide-react";
-import { generateCharacterAction, generateSceneBackgroundAction, generateSceneAudioAction, saveSceneAudioAction } from "@/app/actions/ai-actions";
-import { generateSpeech } from "@/lib/audio/tts";
+import { generateCharacterAction, generateSceneBackgroundAction, generateSceneAudioAction } from "@/app/actions/ai-actions";
 
 type Story = Database["public"]["Tables"]["stories"]["Row"];
 type Character = Database["public"]["Tables"]["characters"]["Row"];
@@ -160,6 +159,17 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     setAudioProgress({ current: 0, total: scenes.length });
 
     try {
+      // Delete existing audio tracks for these scenes
+      const sceneIds = scenes.map(s => s.id);
+      const { error: deleteError } = await supabase
+        .from('audio_tracks')
+        .delete()
+        .in('scene_id', sceneIds);
+
+      if (deleteError) {
+        console.warn('Failed to delete old audio tracks:', deleteError);
+      }
+
       for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
         setAudioProgress({ current: i + 1, total: scenes.length });
@@ -172,29 +182,14 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
         console.log(`Generating audio for scene ${scene.scene_number}:`, text);
 
         try {
-          // Generate speech using Web Speech API (browser-based, free)
-          const result = await generateSpeech({
-            text,
-            rate: 1.0,
-            pitch: 1.0,
-          });
+          // Generate speech using ElevenLabs (server-side)
+          const result = await generateSceneAudioAction(scene.id);
 
-          console.log(`Audio generated for scene ${scene.scene_number}:`, result.duration, 'seconds');
-
-          // Save to Supabase
-          const saveResult = await saveSceneAudioAction(
-            scene.id,
-            result.audioBlob,
-            result.duration,
-            result.transcript
-          );
-
-          if (saveResult.error) {
-            console.error(`Failed to save audio for scene ${scene.scene_number}:`, saveResult.error);
-            continue;
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to generate audio');
           }
 
-          console.log(`Audio saved for scene ${scene.scene_number}`);
+          console.log(`Audio generated for scene ${scene.scene_number}: ${result.duration?.toFixed(2)}s`);
         } catch (error) {
           console.error(`Error generating audio for scene ${scene.scene_number}:`, error);
           // Continue with next scene even if one fails
