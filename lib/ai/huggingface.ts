@@ -133,166 +133,171 @@ function convertToStructuredStory(text: string, prompt: string, sceneCount: numb
 function generateTemplateStory(prompt: string, sceneCount: number, style: string, ageGroup: string): any {
   console.log("[generateTemplateStory] Prompt:", prompt);
 
-  // Extract characters and themes from prompt
+  // Extract the main story elements from prompt
   const lowerPrompt = prompt.toLowerCase();
+  
+  // Extract main character
+  let mainCharacter = "Hero";
+  const manMatch = prompt.match(/(?:a|the)\s+(man|woman|boy|girl|person|child|king|queen|prince|princess|farmer|merchant|traveler|explorer)/i);
+  if (manMatch) {
+    mainCharacter = manMatch[1].charAt(0).toUpperCase() + manMatch[1].slice(1);
+  }
+  
+  // Extract main object/goal
+  let mainObject = "";
+  const objectMatch = prompt.match(/(?:finds|discovers|seeks|wants|gets|loses|hides)\s+(?:a|the|some)?\s*(\w+)/i);
+  if (objectMatch) {
+    mainObject = objectMatch[1];
+  }
+  
+  // Extract key actions
+  const actions = {
+    finds: lowerPrompt.includes("find") || lowerPrompt.includes("discover"),
+    hides: lowerPrompt.includes("hide") || lowerPrompt.includes("conceal"),
+    loses: lowerPrompt.includes("lose") || lowerPrompt.includes("lost"),
+    tries: lowerPrompt.includes("tries") || lowerPrompt.includes("attempts"),
+    family: lowerPrompt.includes("family") || lowerPrompt.includes("relative"),
+  };
 
-  // Try to extract multiple characters
-  let characters: string[] = [];
+  console.log("[generateTemplateStory] Extracted - Character:", mainCharacter, "Object:", mainObject, "Actions:", actions);
 
-  // Look for "two X" or "two Y and Z" patterns
-  const twoPattern = /two\s+(\w+)(?:\s+and\s+(\w+))?/i;
-  const twoMatch = prompt.match(twoPattern);
-  if (twoMatch) {
-    characters.push(twoMatch[1].charAt(0).toUpperCase() + twoMatch[1].slice(1).toLowerCase());
-    if (twoMatch[2]) {
-      characters.push(twoMatch[2].charAt(0).toUpperCase() + twoMatch[2].slice(1).slice(1).toLowerCase());
-    } else {
-      // If just "two X", create two character names
-      const base = twoMatch[1].charAt(0).toUpperCase() + twoMatch[1].slice(1).toLowerCase();
-      characters = [base + " One", base + " Two"];
-    }
-  } else {
-    // Look for common character patterns
-    const characterPatterns = [
-      /(?:about|featuring)\s+(?:a\s+)?(?:brave|little|young|curious)?\s*(\w+)/i,
-      /(\w+)\s+(?:who|that|goes|learns|discovers|wants|likes)/i,
-      /(?:story of|tale of)\s+(?:a\s+)?(\w+)/i,
-      /(?:a|the)\s+(\w+)\s+(?:and|with)/i,
-    ];
-
-    for (const pattern of characterPatterns) {
-      const match = prompt.match(pattern);
-      if (match && match[1] && match[1].length > 2) {
-        const name = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-        if (!characters.includes(name)) {
-          characters.push(name);
-        }
-      }
-    }
+  const characters = [mainCharacter];
+  if (actions.family) {
+    characters.push("Family");
   }
 
-  // If still no characters, use descriptive words from prompt
-  if (characters.length === 0) {
-    const words = prompt.split(/\s+/).filter((w) => w.length > 4);
-    if (words.length > 0) {
-      const word = words[0].replace(/[^a-zA-Z]/g, "");
-      characters.push(word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-    } else {
-      characters.push("Hero");
-    }
-  }
+  // Create story narrative based on actual prompt
+  const storyNarrative = {
+    intro: prompt.split(/(?:but|and then|eventually|however)/i)[0].trim() || `${mainCharacter} begins an adventure.`,
+    conflict: actions.hides ? `${mainCharacter} tries to keep the secret hidden` : `${mainCharacter} faces a difficult choice`,
+    resolution: actions.loses ? `In the end, ${mainCharacter} loses what was found` : `${mainCharacter} learns an important lesson`,
+  };
 
-  console.log("[generateTemplateStory] Extracted characters:", characters);
-
-  const mainChar = characters[0];
-  const charList = characters.length > 1 ? characters.join(" and ") : mainChar;
-
-  // Extract themes/actions from prompt
   const themes = {
     action: lowerPrompt.match(/adventure|explore|discover|find|search|quest/),
-    friendship: lowerPrompt.match(/friend|together|help|love|care|bond/),
-    learning: lowerPrompt.match(/learn|discover|understand|teach|grow/),
-    magic: lowerPrompt.match(/magic|magical|enchant|spell|wonder/),
-    problem: lowerPrompt.match(/problem|challenge|overcome|solve|fix/),
+    conflict: lowerPrompt.match(/hide|secret|tries|but|however|challenge/),
+    loss: lowerPrompt.match(/lose|lost|gone|vanish|disappear/),
+    moral: lowerPrompt.match(/learn|realize|understand|eventually/),
   };
 
-  // Create varied scenes based on theme
-  const sceneVariations = [
-    {
-      setting: themes.magic ? "A magical forest filled with wonder" : "A sunny meadow full of surprises",
-      action: `${charList} set${characters.length === 1 ? "s" : ""} out on an exciting journey`,
-    },
-    {
-      setting: themes.friendship ? "A place where new friends gather" : "An interesting location to explore",
-      action: `${charList} meet${characters.length === 1 ? "s" : ""} someone who needs help`,
-    },
-    {
-      setting: themes.problem ? "A tricky situation appears" : "Things get more interesting",
-      action: `${charList} discover${characters.length === 1 ? "s" : ""} a challenge to overcome`,
-    },
-    {
-      setting: themes.learning ? "A moment of discovery" : "The adventure continues",
-      action: `${charList} learn${characters.length === 1 ? "s" : ""} something important`,
-    },
-    {
-      setting: "The perfect place for celebration",
-      action: `${charList} succeed${characters.length === 1 ? "s" : ""} and everyone is happy`,
-    },
-  ];
+  console.log("[generateTemplateStory] Story themes:", themes);
+  console.log("[generateTemplateStory] Story themes:", themes);
 
-  const templates = {
-    toddler: {
-      intro: `Once upon a time, ${charList} loved to play and explore together.`,
-      middle: `${charList} discovered something wonderful and made new friends along the way.`,
-      end: `Everyone was happy and ${charList} learned something new! The end!`,
-    },
-    preschool: {
-      intro: `In a magical place, ${charList} began an exciting adventure together.`,
-      middle: `${charList} faced a challenge but didn't give up, working together.`,
-      end: `With help from friends, ${charList} succeeded and everyone celebrated!`,
-    },
-    elementary: {
-      intro: `${charList} lived in an interesting world and wanted to ${
-        prompt.includes("find") ? "find something special" : "go on an adventure"
-      }.`,
-      middle: `Through creativity and determination, ${charList} worked together to overcome obstacles.`,
-      end: `${charList} achieved their goal and learned that teamwork and courage make anything possible!`,
-    },
-  };
-
-  const template = templates[ageGroup as keyof typeof templates] || templates.preschool;
-
-  // Generate scenes with variety
+  // Generate scenes based on actual story structure
   const scenes = [];
+  const charList = characters.join(" and ");
 
-  // Opening scene
-  scenes.push({
-    number: 1,
-    title: "The Beginning",
-    setting: themes.magic ? "A magical world full of wonder" : "A beautiful place ready for adventure",
-    narration: template.intro,
-    dialogue: characters.map((c) => ({ character: c, text: "Let's go on an adventure!" })),
-    actions: [`${charList} look${characters.length === 1 ? "s" : ""} around with excitement`],
-  });
-
-  // Middle scenes with variation
-  for (let i = 0; i < sceneCount - 2; i++) {
-    const variation = sceneVariations[Math.min(i + 1, sceneVariations.length - 2)];
+  if (sceneCount === 3) {
+    // 3-act structure
     scenes.push({
-      number: i + 2,
-      title: `Scene ${i + 2}: ${["The Journey", "New Friends", "The Challenge", "Discovery"][i] || "Adventure"}`,
-      setting: variation.setting,
-      narration: i === 0 ? template.middle : variation.action,
-      dialogue: [
-        {
-          character: characters[i % characters.length],
-          text: ["We can do this!", "This is exciting!", "Let's keep going!", "I have an idea!"][i % 4],
-        },
-      ],
-      actions: [variation.action],
+      number: 1,
+      title: "The Discovery",
+      setting: mainObject ? `A place where ${mainObject} can be found` : "The story begins",
+      narration: storyNarrative.intro,
+      dialogue: [{ character: mainCharacter, text: mainObject ? `I found ${mainObject}!` : "What an opportunity!" }],
+      actions: [`${mainCharacter} discovers something valuable`],
+    });
+
+    scenes.push({
+      number: 2,
+      title: "The Secret",
+      setting: actions.hides ? "A hidden place away from others" : "Things get complicated",
+      narration: storyNarrative.conflict,
+      dialogue: [{ character: mainCharacter, text: actions.hides ? "I must keep this hidden." : "What should I do?" }],
+      actions: [`${mainCharacter} struggles with their decision`],
+    });
+
+    scenes.push({
+      number: 3,
+      title: "The Outcome",
+      setting: actions.loses ? "The moment of loss" : "The resolution",
+      narration: storyNarrative.resolution,
+      dialogue: [{ character: mainCharacter, text: actions.loses ? "It's gone..." : "I've learned my lesson." }],
+      actions: [`${mainCharacter} faces the consequences and learns something important`],
+    });
+  } else {
+    // 5+ act structure - more detailed
+    scenes.push({
+      number: 1,
+      title: "The Beginning",
+      setting: "Where the story starts",
+      narration: `${mainCharacter} lives an ordinary life.`,
+      dialogue: [{ character: mainCharacter, text: "Today seems like any other day." }],
+      actions: [`${mainCharacter} goes about their daily routine`],
+    });
+
+    scenes.push({
+      number: 2,
+      title: "The Discovery",
+      setting: mainObject ? `The place where ${mainObject} is found` : "A surprising moment",
+      narration: storyNarrative.intro,
+      dialogue: [{ character: mainCharacter, text: mainObject ? `I can't believe I found ${mainObject}!` : "This changes everything!" }],
+      actions: [`${mainCharacter} makes an important discovery`],
+    });
+
+    if (actions.hides) {
+      scenes.push({
+        number: 3,
+        title: "The Deception",
+        setting: actions.family ? "At home with family" : "Making difficult choices",
+        narration: storyNarrative.conflict,
+        dialogue: [
+          { character: mainCharacter, text: "No one can know about this." },
+          ...(actions.family ? [{ character: "Family", text: "Is something wrong?" }] : []),
+        ],
+        actions: [`${mainCharacter} tries to keep the secret from those close to them`],
+      });
+    } else {
+      scenes.push({
+        number: 3,
+        title: "The Dilemma",
+        setting: "A moment of uncertainty",
+        narration: `${mainCharacter} doesn't know what to do.`,
+        dialogue: [{ character: mainCharacter, text: "This is harder than I thought." }],
+        actions: [`${mainCharacter} faces unexpected challenges`],
+      });
+    }
+
+    if (actions.loses) {
+      scenes.push({
+        number: 4,
+        title: "The Loss",
+        setting: "The moment everything changes",
+        narration: `Despite all efforts, ${mainCharacter} loses what was found.`,
+        dialogue: [{ character: mainCharacter, text: "It's gone... all of it." }],
+        actions: [`${mainCharacter} experiences loss`],
+      });
+    } else {
+      scenes.push({
+        number: 4,
+        title: "The Revelation",
+        setting: "Truth comes to light",
+        narration: `${mainCharacter} realizes the truth.`,
+        dialogue: [{ character: mainCharacter, text: "I understand now." }],
+        actions: [`${mainCharacter} has an important realization`],
+      });
+    }
+
+    scenes.push({
+      number: 5,
+      title: "The Lesson",
+      setting: "The story concludes",
+      narration: storyNarrative.resolution,
+      dialogue: [{ character: mainCharacter, text: themes.loss ? "Some things aren't meant to be kept." : "I've learned what truly matters." }],
+      actions: [`${mainCharacter} reflects on the experience and grows from it`],
     });
   }
-
-  // Ending scene
-  scenes.push({
-    number: sceneCount,
-    title: "The Happy Ending",
-    setting: "A wonderful place where everyone celebrates together",
-    narration: template.end,
-    dialogue: [{ character: mainChar, text: "What an amazing adventure!" }],
-    actions: [`${charList} celebrate${characters.length === 1 ? "s" : ""} happily with all their friends`],
-  });
 
   console.log("[generateTemplateStory] Generated story with", scenes.length, "scenes");
 
   return {
-    title: prompt.substring(0, 60).trim() || `The Adventure of ${charList}`,
+    title: prompt.length > 60 ? prompt.substring(0, 60).trim() + "..." : prompt,
     characters: characters.map((name) => ({
       name,
-      description: `${name} is a ${themes.friendship ? "friendly" : "brave"} character who loves ${
-        themes.action ? "adventures" : "making friends"
-      }`,
-      personality: "brave, curious, and kind",
+      description: name === mainCharacter 
+        ? `The main character who ${storyNarrative.intro.split('.')[0].toLowerCase()}`
+        : `${name} plays an important role in the story`,
+      personality: themes.conflict ? "complex, conflicted, human" : "brave, curious, and kind",
     })),
     scenes,
   };
