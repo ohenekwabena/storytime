@@ -3,7 +3,6 @@ import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { MobileNav } from "@/components/mobile-nav";
-import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Sparkles, Home, BookOpen } from "lucide-react";
@@ -32,13 +31,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                   href="/protected"
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                 >
-                  <Home className="w-4 h-4" />
-                  Dashboard
-                </Link>
-                <Link
-                  href="/protected"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium"
-                >
                   <BookOpen className="w-4 h-4" />
                   My Stories
                 </Link>
@@ -48,13 +40,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             {/* Right side actions */}
             <div className="flex items-center gap-3">
               <ThemeSwitcher />
-              {hasEnvVars ? (
-                <Suspense>
-                  <AuthButton />
-                </Suspense>
-              ) : (
-                <EnvVarWarning />
-              )}
+              <Suspense>
+                <AuthButton />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -75,16 +63,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary" />
               <span>
-                Powered by{" "}
-                <a
-                  href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
-                  target="_blank"
-                  className="font-semibold text-primary hover:underline"
-                  rel="noreferrer"
-                >
-                  Supabase
-                </a>
-                {" & "}
+                Powered by
                 <span className="font-semibold gradient-text">AI Magic</span>
               </span>
             </div>

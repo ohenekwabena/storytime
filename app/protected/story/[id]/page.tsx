@@ -6,6 +6,29 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/lib/supabase/database.types";
 import {
@@ -26,10 +49,12 @@ import {
   generateSceneBackgroundAction,
   generateSceneAudioAction,
 } from "@/app/actions/ai-actions";
+import { toast } from "sonner";
 
 type Story = Database["public"]["Tables"]["stories"]["Row"];
 type Character = Database["public"]["Tables"]["characters"]["Row"];
 type Scene = Database["public"]["Tables"]["scenes"]["Row"];
+type StoryStyle = "cartoon" | "anime" | "realistic" | "comic";
 
 export default function StoryEditorPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap params using React.use()
@@ -43,6 +68,15 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   const [generatingBackgrounds, setGeneratingBackgrounds] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState({ current: 0, total: 0 });
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState<{ title: string; description: string; style: StoryStyle }>({
+    title: "",
+    description: "",
+    style: "cartoon",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -50,6 +84,16 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     loadStoryData();
   }, [id]);
+
+  useEffect(() => {
+    if (story) {
+      setEditForm({
+        title: story.title,
+        description: story.description || "",
+        style: story.style,
+      });
+    }
+  }, [story]);
 
   const loadStoryData = async () => {
     setIsLoading(true);
@@ -139,28 +183,59 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
         }
       }
       await loadStoryData();
+      toast.success("Backgrounds generated successfully");
     } catch (error) {
       console.error("Error generating backgrounds:", error);
-      alert("Failed to generate backgrounds. Please try again.");
+      toast.error("Failed to generate backgrounds. Please try again.");
     } finally {
       setGeneratingBackgrounds(false);
     }
   };
 
-  const handleDeleteStory = async () => {
-    if (!confirm("Are you sure you want to delete this story? This cannot be undone.")) {
-      return;
-    }
+  const handleSaveStory = async () => {
+    if (!story) return;
 
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stories")
+        .update({
+          title: editForm.title,
+          description: editForm.description,
+          style: editForm.style,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Reload story data
+      await loadStoryData();
+      setIsEditDialogOpen(false);
+      toast.success("Story updated successfully");
+    } catch (error) {
+      console.error("Error updating story:", error);
+      toast.error("Failed to update story");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteStory = async () => {
+    setIsDeleting(true);
     try {
       const { error } = await supabase.from("stories").delete().eq("id", id);
 
       if (error) throw error;
 
+      toast.success("Story deleted successfully");
       router.push("/protected");
     } catch (error) {
       console.error("Error deleting story:", error);
-      alert("Failed to delete story. Please try again.");
+      toast.error("Failed to delete story. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -209,11 +284,11 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
         }
       }
 
-      alert(`Audio generation complete! Generated narration for ${scenes.length} scenes.`);
+      toast.success(`Audio generation complete! Generated narration for ${scenes.length} scenes.`);
       loadStoryData(); // Reload to show audio indicators
     } catch (error) {
       console.error("Error generating audio:", error);
-      alert("Failed to generate audio. Please try again.");
+      toast.error("Failed to generate audio. Please try again.");
     } finally {
       setGeneratingAudio(false);
       setAudioProgress({ current: 0, total: 0 });
@@ -222,7 +297,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
   const handleExportVideo = async () => {
     // TODO: Implement video export
-    alert("Video export coming soon! This will render your story as a video file.");
+    toast.info("Video export coming soon! This will render your story as a video file.");
   };
 
   const getStatusColor = (status: string) => {
@@ -274,14 +349,106 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push(`/protected/story/${id}/edit`)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Details
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleDeleteStory}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </Button>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Details
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Story Details</DialogTitle>
+                  <DialogDescription>Update your story's title, description, and visual style.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      placeholder="Enter story title"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      placeholder="Enter story description"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="style">Visual Style</Label>
+                    <Select
+                      value={editForm.style}
+                      onValueChange={(value) => setEditForm({ ...editForm, style: value as StoryStyle })}
+                    >
+                      <SelectTrigger id="style">
+                        <SelectValue placeholder="Select style" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cartoon">Cartoon</SelectItem>
+                        <SelectItem value="anime">Anime</SelectItem>
+                        <SelectItem value="realistic">Realistic</SelectItem>
+                        <SelectItem value="comic">Comic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveStory} disabled={isSaving || !editForm.title.trim()}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your story and all associated characters,
+                    scenes, and media.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteStory}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Story"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -356,7 +523,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
               <Button
                 variant="outline"
                 className="aspect-square"
-                onClick={() => alert("Add character functionality coming soon!")}
+                onClick={() => toast.info("Add character functionality coming soon!")}
               >
                 <Plus className="w-8 h-8" />
               </Button>
@@ -403,10 +570,10 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                           <p className="text-sm text-muted-foreground">{scene.background_description}</p>
                         </div>
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => alert("Scene editor coming soon!")}>
+                          <Button size="sm" variant="ghost" onClick={() => toast.info("Scene editor coming soon!")}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => alert("Scene preview coming soon!")}>
+                          <Button size="sm" variant="ghost" onClick={() => toast.info("Scene preview coming soon!")}>
                             <Play className="w-4 h-4" />
                           </Button>
                         </div>
