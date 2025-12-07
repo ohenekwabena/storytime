@@ -63,8 +63,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary" />
               <span>
-                Powered by
-                <span className="font-semibold gradient-text">AI Magic</span>
+                Powered by <span className="font-semibold gradient-text"> AI Magic</span>
               </span>
             </div>
 

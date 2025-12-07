@@ -37,7 +37,7 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="text-sm text-white/60">© 2024 StoryTime AI. All rights reserved.</div>
+          <div className="text-sm text-white/60">© 2025 StoryTime AI. All rights reserved.</div>
         </div>
       </div>
 
