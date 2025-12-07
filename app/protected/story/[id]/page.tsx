@@ -50,6 +50,8 @@ import {
   generateSceneAudioAction,
 } from "@/app/actions/ai-actions";
 import { toast } from "sonner";
+import { SceneEditorDialog } from "@/components/story/scene-editor-dialog";
+import { ScenePreviewDialog } from "@/components/story/scene-preview-dialog";
 
 type Story = Database["public"]["Tables"]["stories"]["Row"];
 type Character = Database["public"]["Tables"]["characters"]["Row"];
@@ -77,6 +79,9 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedScene, setSelectedScene] = useState<Scene | null>(null);
+  const [isSceneEditorOpen, setIsSceneEditorOpen] = useState(false);
+  const [isScenePreviewOpen, setIsScenePreviewOpen] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -300,6 +305,20 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
     toast.info("Video export coming soon! This will render your story as a video file.");
   };
 
+  const handleEditScene = (scene: Scene) => {
+    setSelectedScene(scene);
+    setIsSceneEditorOpen(true);
+  };
+
+  const handlePreviewScene = (scene: Scene) => {
+    setSelectedScene(scene);
+    setIsScenePreviewOpen(true);
+  };
+
+  const handleSceneSaved = () => {
+    loadStoryData();
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "draft":
@@ -336,24 +355,24 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="container max-w-6xl mx-auto py-8 px-4">
+    <div className="container max-w-6xl mx-auto py-4 sm:py-8 px-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{story.title}</h1>
-            <p className="text-muted-foreground">{story.description}</p>
-            <div className="flex gap-2 mt-2">
+        <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{story.title}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">{story.description}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
               <Badge className={getStatusColor(story.status)}>{story.status}</Badge>
               <Badge variant="outline">{story.style}</Badge>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Details
+                  <Edit className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit Details</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
@@ -418,8 +437,8 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
+                  <Trash2 className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -461,34 +480,36 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
             <Button
               onClick={generateAllBackgrounds}
               disabled={generatingBackgrounds || scenes.every((s) => s.background_url)}
+              className="text-xs sm:text-sm"
             >
               {generatingBackgrounds ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
               ) : (
-                <ImageIcon className="w-4 h-4 mr-2" />
+                <ImageIcon className="w-4 h-4 mr-1 sm:mr-2" />
               )}
-              Generate All Backgrounds
+              <span className="hidden sm:inline">Generate All </span>Backgrounds
             </Button>
-            <Button variant="outline" onClick={handleGenerateAudio} disabled={generatingAudio}>
+            <Button
+              variant="outline"
+              onClick={handleGenerateAudio}
+              disabled={generatingAudio}
+              className="text-xs sm:text-sm"
+            >
               {generatingAudio ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
                   Generating ({audioProgress.current}/{audioProgress.total})
                 </>
               ) : (
                 <>
-                  <Volume2 className="w-4 h-4 mr-2" />
-                  Generate Audio
+                  <Volume2 className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Generate </span>Audio
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={handlePreviewAnimation}>
-              <Film className="w-4 h-4 mr-2" />
-              Preview Animation
-            </Button>
-            <Button variant="outline" onClick={handleExportVideo}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Video
+            <Button variant="outline" onClick={handlePreviewAnimation} className="text-xs sm:text-sm">
+              <Film className="w-4 h-4 mr-1 sm:mr-2" />
+              Preview<span className="hidden sm:inline"> Animation</span>
             </Button>
           </CardContent>
         </Card>
@@ -545,10 +566,10 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="border rounded-lg p-4"
+                  className="border rounded-lg p-3 sm:p-4"
                 >
-                  <div className="flex gap-4">
-                    <div className="w-32 h-24 bg-muted rounded overflow-hidden flex-shrink-0">
+                  <div className="flex gap-3 sm:gap-4">
+                    <div className="hidden xs:block w-20 h-16 sm:w-32 sm:h-24 bg-muted rounded overflow-hidden flex-shrink-0">
                       {scene.background_url ? (
                         <img
                           src={scene.background_url}
@@ -556,32 +577,48 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                           No BG
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-semibold">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm sm:text-base truncate">
                             Scene {scene.scene_number}: {scene.title}
                           </h3>
-                          <p className="text-sm text-muted-foreground">{scene.background_description}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2">
+                            {scene.background_description}
+                          </p>
                         </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => toast.info("Scene editor coming soon!")}>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditScene(scene)}
+                            className="h-8 w-8 p-0"
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => toast.info("Scene preview coming soon!")}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handlePreviewScene(scene)}
+                            className="h-8 w-8 p-0"
+                          >
                             <Play className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm">{scene.script_text}</p>
-                      <div className="flex gap-2 mt-2">
-                        <Badge variant="outline">{scene.duration}s</Badge>
-                        <Badge variant="outline">{scene.transition_type}</Badge>
+                      <p className="text-xs sm:text-sm line-clamp-2 sm:line-clamp-3">{scene.script_text}</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {scene.duration}s
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {scene.transition_type}
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -591,6 +628,19 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Scene Editor Dialog */}
+      <SceneEditorDialog
+        scene={selectedScene}
+        storyId={id}
+        storyStyle={story.style}
+        open={isSceneEditorOpen}
+        onOpenChange={setIsSceneEditorOpen}
+        onSave={handleSceneSaved}
+      />
+
+      {/* Scene Preview Dialog */}
+      <ScenePreviewDialog scene={selectedScene} open={isScenePreviewOpen} onOpenChange={setIsScenePreviewOpen} />
     </div>
   );
 }

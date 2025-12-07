@@ -18,25 +18,36 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
 
   const currentScene = scenes[currentSceneIndex];
   const totalScenes = scenes.length;
 
   // Play audio when scene changes or play state changes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    // Cleanup previous audio
+    const cleanupAudio = async () => {
+      if (audioRef.current) {
+        // Wait for any pending play promise to resolve
+        if (playPromiseRef.current) {
+          try {
+            await playPromiseRef.current;
+          } catch (e) {
+            // Ignore - play was interrupted
+          }
+          playPromiseRef.current = null;
+        }
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+    };
 
     if (isPlaying && currentScene?.audioUrl) {
       console.log(`Playing audio for scene ${currentSceneIndex + 1}:`, currentScene.audioUrl);
       const audio = new Audio(currentScene.audioUrl);
       audioRef.current = audio;
-
-      audio.play().catch((error) => {
-        console.warn("Audio playback failed:", error);
-      });
 
       audio.onloadedmetadata = () => {
         console.log(`Audio loaded, duration: ${audio.duration}s`);
@@ -46,13 +57,22 @@ export default function SceneCarousel({ scenes, isPlaying, onPlayPause, classNam
         console.log("Audio playback ended");
       };
 
-      return () => {
-        audio.pause();
-        audio.src = "";
-      };
+      // Store the play promise and handle it properly
+      playPromiseRef.current = audio.play().catch((error) => {
+        if (error.name !== "AbortError") {
+          console.warn("Audio playback failed:", error);
+        }
+      });
     } else if (isPlaying && !currentScene?.audioUrl) {
       console.log(`Scene ${currentSceneIndex + 1} has no audio`);
+      cleanupAudio();
+    } else {
+      cleanupAudio();
     }
+
+    return () => {
+      cleanupAudio();
+    };
   }, [currentSceneIndex, isPlaying, currentScene?.audioUrl]);
 
   // Auto-advance to next scene based on duration

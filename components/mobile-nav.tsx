@@ -32,14 +32,6 @@ export function MobileNav() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
               >
-                <Home className="w-5 h-5" />
-                <span className="font-medium">Dashboard</span>
-              </Link>
-              <Link
-                href="/protected"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-              >
                 <BookOpen className="w-5 h-5" />
                 <span className="font-medium">My Stories</span>
               </Link>

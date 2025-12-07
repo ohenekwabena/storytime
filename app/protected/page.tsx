@@ -68,11 +68,6 @@ async function StoriesContent() {
             <p className="text-lg text-muted-foreground">Create and manage your animated stories with AI magic</p>
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="flex-1 md:flex-initial text-center md:text-right px-6 py-4 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30">
-              <p className="text-sm text-muted-foreground mb-1">Available Credits</p>
-              <p className="text-3xl font-bold gradient-text">{profile?.credits || 0}</p>
-              <AddCreditsButton />
-            </div>
             <Link href="/protected/create" className="flex-1 md:flex-initial">
               <Button
                 size="lg"
