@@ -569,7 +569,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
                   className="border rounded-lg p-3 sm:p-4"
                 >
                   <div className="flex gap-3 sm:gap-4">
-                    <div className="hidden xs:block w-20 h-16 sm:w-32 sm:h-24 bg-muted rounded overflow-hidden flex-shrink-0">
+                    <div className="w-20 h-16 sm:w-32 sm:h-24 bg-muted rounded overflow-hidden flex-shrink-0">
                       {scene.background_url ? (
                         <img
                           src={scene.background_url}

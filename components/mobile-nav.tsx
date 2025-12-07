@@ -17,16 +17,21 @@ export function MobileNav() {
 
       {/* Mobile menu overlay */}
       {open && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] md:hidden" onClick={() => setOpen(false)}>
           <div
-            className="fixed left-0 top-16 bottom-0 w-64 bg-card border-r border-border shadow-lg p-6 animate-slide-up"
+            className="fixed left-0 top-0 h-full w-3/4 max-w-sm bg-background border-r border-border shadow-xl p-6 flex flex-col overflow-y-auto transform transition-transform duration-300 ease-in-out z-[101]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 mb-8">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <span className="font-bold gradient-text">StoryTime AI</span>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span className="font-bold gradient-text">StoryTime AI</span>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-            <nav className="flex flex-col gap-2">
+            <nav className="flex flex-col gap-2 flex-1">
               <Link
                 href="/protected"
                 onClick={() => setOpen(false)}

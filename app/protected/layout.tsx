@@ -11,7 +11,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   return (
     <main className="min-h-screen flex flex-col">
       {/* Modern Navigation with gradient background */}
-      <nav className="w-full border-b border-border/50 backdrop-blur-lg bg-background/80 sticky top-0 z-50">
+      <nav className="w-full border-b border-border/50 backdrop-blur-lg bg-background/80 sticky top-0 z-50 isolate">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo and Brand */}
@@ -49,7 +49,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Main Content with gradient background */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative isolate">
         {/* Gradient background effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 pointer-events-none" />
 
