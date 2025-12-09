@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,36 @@ import { useRouter } from "next/navigation";
 export default function CreateStoryPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState<"cartoon" | "anime" | "realistic" | "comic">("cartoon");
   const [targetLength, setTargetLength] = useState<"short" | "medium" | "long">("short");
   const [ageGroup, setAgeGroup] = useState<"toddler" | "preschool" | "elementary">("preschool");
   const [error, setError] = useState<string | null>(null);
+
+  const loadingMessages = [
+    "Crafting your story...",
+    "Developing characters...",
+    "Building the plot...",
+    "Adding dialogue...",
+    "Creating scenes...",
+    "Polishing the narrative...",
+    "Almost there...",
+  ];
+
+  // Rotate loading messages
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isGenerating) {
+      let index = 0;
+      setLoadingMessage(loadingMessages[0]);
+      interval = setInterval(() => {
+        index = (index + 1) % loadingMessages.length;
+        setLoadingMessage(loadingMessages[index]);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -181,7 +206,7 @@ export default function CreateStoryPage() {
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating Your Story...
+                  {loadingMessage}
                 </>
               ) : (
                 <>

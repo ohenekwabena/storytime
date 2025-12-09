@@ -67,8 +67,11 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [generatingCharacters, setGeneratingCharacters] = useState(false);
+  const [characterLoadingMessage, setCharacterLoadingMessage] = useState("");
   const [generatingBackgrounds, setGeneratingBackgrounds] = useState(false);
+  const [backgroundLoadingMessage, setBackgroundLoadingMessage] = useState("");
   const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [audioLoadingMessage, setAudioLoadingMessage] = useState("");
   const [audioProgress, setAudioProgress] = useState({ current: 0, total: 0 });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -160,23 +163,55 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
   const generateAllCharacters = async (storyId: string, charactersData: any[]) => {
     setGeneratingCharacters(true);
+    const messages = [
+      "Creating character designs...",
+      "Generating character artwork...",
+      "Bringing characters to life...",
+      "Applying art style...",
+      "Finalizing character images...",
+    ];
 
-    for (const charData of charactersData) {
-      await generateCharacterAction(storyId, {
-        name: charData.name,
-        description: charData.description,
-        style: (story?.style as any) || "cartoon",
-      });
+    let messageIndex = 0;
+    setCharacterLoadingMessage(messages[0]);
+    const interval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % messages.length;
+      setCharacterLoadingMessage(messages[messageIndex]);
+    }, 3000);
+
+    try {
+      for (const charData of charactersData) {
+        await generateCharacterAction(storyId, {
+          name: charData.name,
+          description: charData.description,
+          style: (story?.style as any) || "cartoon",
+        });
+      }
+      await loadStoryData();
+    } finally {
+      clearInterval(interval);
+      setGeneratingCharacters(false);
+      setCharacterLoadingMessage("");
     }
-
-    setGeneratingCharacters(false);
-    loadStoryData();
   };
 
   const generateAllBackgrounds = async () => {
     if (!story) return;
 
     setGeneratingBackgrounds(true);
+    const messages = [
+      "Painting scene backgrounds...",
+      "Creating environments...",
+      "Adding characters to scenes...",
+      "Applying lighting and colors...",
+      "Finalizing scene artwork...",
+    ];
+
+    let messageIndex = 0;
+    setBackgroundLoadingMessage(messages[0]);
+    const interval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % messages.length;
+      setBackgroundLoadingMessage(messages[messageIndex]);
+    }, 3000);
 
     try {
       for (const scene of scenes) {
@@ -193,7 +228,9 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       console.error("Error generating backgrounds:", error);
       toast.error("Failed to generate backgrounds. Please try again.");
     } finally {
+      clearInterval(interval);
       setGeneratingBackgrounds(false);
+      setBackgroundLoadingMessage("");
     }
   };
 
@@ -253,6 +290,20 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
 
     setGeneratingAudio(true);
     setAudioProgress({ current: 0, total: scenes.length });
+    const messages = [
+      "Recording narration...",
+      "Generating voice audio...",
+      "Processing speech...",
+      "Adding audio effects...",
+      "Syncing audio tracks...",
+    ];
+
+    let messageIndex = 0;
+    setAudioLoadingMessage(messages[0]);
+    const interval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % messages.length;
+      setAudioLoadingMessage(messages[messageIndex]);
+    }, 2500);
 
     try {
       // Delete existing audio tracks for these scenes
@@ -295,8 +346,10 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
       console.error("Error generating audio:", error);
       toast.error("Failed to generate audio. Please try again.");
     } finally {
+      clearInterval(interval);
       setGeneratingAudio(false);
       setAudioProgress({ current: 0, total: 0 });
+      setAudioLoadingMessage("");
     }
   };
 
@@ -483,11 +536,16 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
               className="text-xs sm:text-sm"
             >
               {generatingBackgrounds ? (
-                <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
+                  {backgroundLoadingMessage}
+                </>
               ) : (
-                <ImageIcon className="w-4 h-4 mr-1 sm:mr-2" />
+                <>
+                  <ImageIcon className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Generate All </span>Backgrounds
+                </>
               )}
-              <span className="hidden sm:inline">Generate All </span>Backgrounds
             </Button>
             <Button
               variant="outline"
@@ -498,7 +556,8 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
               {generatingAudio ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
-                  Generating ({audioProgress.current}/{audioProgress.total})
+                  <span className="hidden sm:inline">{audioLoadingMessage} </span>({audioProgress.current}/
+                  {audioProgress.total})
                 </>
               ) : (
                 <>
@@ -519,7 +578,7 @@ export default function StoryEditorPage({ params }: { params: Promise<{ id: stri
           <CardHeader>
             <CardTitle>Characters ({characters.length})</CardTitle>
             <CardDescription>
-              {generatingCharacters ? "Generating character images..." : "Characters in this story"}
+              {generatingCharacters ? characterLoadingMessage : "Characters in this story"}
             </CardDescription>
           </CardHeader>
           <CardContent>
