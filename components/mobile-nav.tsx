@@ -17,9 +17,12 @@ export function MobileNav() {
 
       {/* Mobile menu overlay */}
       {open && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] md:hidden" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 w-screen h-screen bg-black/50 backdrop-blur-sm z-[100] md:hidden"
+          onClick={() => setOpen(false)}
+        >
           <div
-            className="fixed left-0 top-0 h-full w-3/4 max-w-sm bg-background border-r border-border shadow-xl p-6 flex flex-col overflow-y-auto transform transition-transform duration-300 ease-in-out z-[101]"
+            className="fixed left-0 top-0 bottom-0 h-screen w-3/4 max-w-sm bg-background border-r border-border shadow-xl p-6 flex flex-col overflow-y-auto transform transition-transform duration-300 ease-in-out z-[101]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-8">
