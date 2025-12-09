@@ -46,7 +46,7 @@ if (fs.existsSync(envPath)) {
   console.log("   ✅ .env.local file exists");
 
   const envContent = fs.readFileSync(envPath, "utf8");
-  const requiredVars = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "HUGGINGFACE_API_KEY"];
+  const requiredVars = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "OPENAI_API_KEY"];
 
   const missingVars = requiredVars.filter((varName) => {
     const regex = new RegExp(`^${varName}=.+`, "m");

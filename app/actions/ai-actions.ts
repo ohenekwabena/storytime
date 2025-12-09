@@ -9,7 +9,7 @@ import {
   type StoryGenerationParams,
   type CharacterGenerationParams,
   type SceneGenerationParams,
-} from "@/lib/ai/huggingface";
+} from "@/lib/ai/openai";
 import { revalidatePath } from "next/cache";
 
 export async function generateStoryAction(params: StoryGenerationParams) {

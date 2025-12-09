@@ -135,21 +135,23 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
 
   // Extract the main story elements from prompt
   const lowerPrompt = prompt.toLowerCase();
-  
+
   // Extract main character
   let mainCharacter = "Hero";
-  const manMatch = prompt.match(/(?:a|the)\s+(man|woman|boy|girl|person|child|king|queen|prince|princess|farmer|merchant|traveler|explorer)/i);
+  const manMatch = prompt.match(
+    /(?:a|the)\s+(man|woman|boy|girl|person|child|king|queen|prince|princess|farmer|merchant|traveler|explorer)/i
+  );
   if (manMatch) {
     mainCharacter = manMatch[1].charAt(0).toUpperCase() + manMatch[1].slice(1);
   }
-  
+
   // Extract main object/goal
   let mainObject = "";
   const objectMatch = prompt.match(/(?:finds|discovers|seeks|wants|gets|loses|hides)\s+(?:a|the|some)?\s*(\w+)/i);
   if (objectMatch) {
     mainObject = objectMatch[1];
   }
-  
+
   // Extract key actions
   const actions = {
     finds: lowerPrompt.includes("find") || lowerPrompt.includes("discover"),
@@ -159,7 +161,14 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
     family: lowerPrompt.includes("family") || lowerPrompt.includes("relative"),
   };
 
-  console.log("[generateTemplateStory] Extracted - Character:", mainCharacter, "Object:", mainObject, "Actions:", actions);
+  console.log(
+    "[generateTemplateStory] Extracted - Character:",
+    mainCharacter,
+    "Object:",
+    mainObject,
+    "Actions:",
+    actions
+  );
 
   const characters = [mainCharacter];
   if (actions.family) {
@@ -169,8 +178,12 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
   // Create story narrative based on actual prompt
   const storyNarrative = {
     intro: prompt.split(/(?:but|and then|eventually|however)/i)[0].trim() || `${mainCharacter} begins an adventure.`,
-    conflict: actions.hides ? `${mainCharacter} tries to keep the secret hidden` : `${mainCharacter} faces a difficult choice`,
-    resolution: actions.loses ? `In the end, ${mainCharacter} loses what was found` : `${mainCharacter} learns an important lesson`,
+    conflict: actions.hides
+      ? `${mainCharacter} tries to keep the secret hidden`
+      : `${mainCharacter} faces a difficult choice`,
+    resolution: actions.loses
+      ? `In the end, ${mainCharacter} loses what was found`
+      : `${mainCharacter} learns an important lesson`,
   };
 
   const themes = {
@@ -231,7 +244,12 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
       title: "The Discovery",
       setting: mainObject ? `The place where ${mainObject} is found` : "A surprising moment",
       narration: storyNarrative.intro,
-      dialogue: [{ character: mainCharacter, text: mainObject ? `I can't believe I found ${mainObject}!` : "This changes everything!" }],
+      dialogue: [
+        {
+          character: mainCharacter,
+          text: mainObject ? `I can't believe I found ${mainObject}!` : "This changes everything!",
+        },
+      ],
       actions: [`${mainCharacter} makes an important discovery`],
     });
 
@@ -283,7 +301,12 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
       title: "The Lesson",
       setting: "The story concludes",
       narration: storyNarrative.resolution,
-      dialogue: [{ character: mainCharacter, text: themes.loss ? "Some things aren't meant to be kept." : "I've learned what truly matters." }],
+      dialogue: [
+        {
+          character: mainCharacter,
+          text: themes.loss ? "Some things aren't meant to be kept." : "I've learned what truly matters.",
+        },
+      ],
       actions: [`${mainCharacter} reflects on the experience and grows from it`],
     });
   }
@@ -294,9 +317,10 @@ function generateTemplateStory(prompt: string, sceneCount: number, style: string
     title: prompt.length > 60 ? prompt.substring(0, 60).trim() + "..." : prompt,
     characters: characters.map((name) => ({
       name,
-      description: name === mainCharacter 
-        ? `The main character who ${storyNarrative.intro.split('.')[0].toLowerCase()}`
-        : `${name} plays an important role in the story`,
+      description:
+        name === mainCharacter
+          ? `The main character who ${storyNarrative.intro.split(".")[0].toLowerCase()}`
+          : `${name} plays an important role in the story`,
       personality: themes.conflict ? "complex, conflicted, human" : "brave, curious, and kind",
     })),
     scenes,
